@@ -1,2 +1,2 @@
-# utils
-project-unspecific utilities
+# go
+all kinds of custom go projects
