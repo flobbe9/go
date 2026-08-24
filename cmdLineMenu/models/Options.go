@@ -6,4 +6,7 @@ type Options struct {
 
 	// Whether to print a hint next to the question telling the user how to submit.
 	IsShowSubmitHint bool;
+	
+	// Whether to print the selected answer next to the question.
+	IsDisplayAnswer bool;
 }
