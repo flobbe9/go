@@ -24,7 +24,8 @@ func ErrorLogPromptExit(err error) {
 	}
 	
 	slog.Error(err.Error());
-	fmt.Scanln("Press Enter to exit...");
+	fmt.Print("Press Enter to exit...");
+	fmt.Scanln();
 	os.Exit(1);
 }
 
