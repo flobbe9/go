@@ -58,12 +58,15 @@ func Prompt(question string, selectOptions []string, optsArg models.Options) (st
 		clearMenu();
 	}
 
-	// print answer
 	answer := SelectOptions[state.CurrentSelectionIndex];
-	fmt.Printf("%v", ansi.CursorUp(1));
-	fmt.Printf("%v", ansi.EraseLine(2)); // erase hint too
-	fmt.Printf("%v - %v\n", question, ansi.NewStyle().ForegroundColor(ansi.RGBColor{R: 100, G: 100, B: 255}).Styled(answer));
-
+	
+	// print answer
+	if (opts.IsDisplayAnswer) {
+		fmt.Printf("%v", ansi.CursorUp(1));
+		fmt.Printf("%v", ansi.EraseLine(2)); // erase hint too
+		fmt.Printf("%v - %v\n", question, ansi.NewStyle().ForegroundColor(ansi.RGBColor{R: 100, G: 100, B: 255}).Styled(answer));
+	}
+	
 	return answer, nil;
 }
 

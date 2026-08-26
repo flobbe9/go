@@ -1,7 +1,10 @@
 package utils
 
 import (
+	"fmt"
 	"log"
+	"log/slog"
+	"os"
 	"time"
 
 	"github.com/eiannone/keyboard"
@@ -13,6 +16,19 @@ func ErrorLogExit(err error) {
 		log.Fatal(err)
 	}
 }
+
+// Log [err] if not [nil] and prompt user to press Enter before exiting with code 1
+func ErrorLogPromptExit(err error) {
+	if err == nil {
+		return;
+	}
+	
+	slog.Error(err.Error());
+	fmt.Print("Press Enter to exit...");
+	fmt.Scanln();
+	os.Exit(1);
+}
+
 
 // Execute [callback] repeatedly every [interval] until the ticker is closed or the program ends. Does not block.
 func GoInterval(interval time.Duration, callback func(ticker *time.Ticker, time time.Time)) *time.Ticker {
