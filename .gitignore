@@ -7,6 +7,8 @@
 
 # Test binary, built with `go test -c`
 *.test
+## for testing stuff
+/test
 
 # Code coverage profiles and other test artifacts
 *.out
