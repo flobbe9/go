@@ -1,5 +1,4 @@
-package slicesUtils;
-
+package sliceUtils
 
 // Classic "map" function.
 //

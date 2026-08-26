@@ -1,9 +1,9 @@
-package slicesUtils_test
+package sliceUtils_test
 
 import (
 	"testing"
 
-	"github.com/flobbe9/go/utils/slicesUtils"
+	"github.com/flobbe9/go/utils/sliceUtils"
 )
 
 func TestSlicesMap_shouldPanicIfSliceArgNil(t *testing.T) {
@@ -13,7 +13,7 @@ func TestSlicesMap_shouldPanicIfSliceArgNil(t *testing.T) {
         }
     }();
 
-	slicesUtils.SlicesMap(nil, func(el string, i int) string {return "";});
+	sliceUtils.SlicesMap(nil, func(el string, i int) string {return "";});
 }
 
 func TestSlicesMap_shouldPanicIfCallbackArgNil(t *testing.T) {
@@ -24,11 +24,11 @@ func TestSlicesMap_shouldPanicIfCallbackArgNil(t *testing.T) {
     }();
 
 	var callback func(el string, i int) string = nil;
-	slicesUtils.SlicesMap([]string{}, callback);
+	sliceUtils.SlicesMap([]string{}, callback);
 }
 
 func TestSlicesMap_shouldReturnEmptySliceIfSliceArgEmpty(t *testing.T) {
-	result := slicesUtils.SlicesMap([]string{}, func(str string, i int) string {return str})
+	result := sliceUtils.SlicesMap([]string{}, func(str string, i int) string {return str})
 	if len(result) > 0 {
 		t.Errorf("Expected result to be empty for empty slice arg");
 	}
@@ -38,7 +38,7 @@ func TestSlicesMap_shouldReturnExpectedSlice(t *testing.T) {
 	s := []rune{'a', 'b', 'c', 'd'};
 	expectedResult := []int{int('a'), int('b'), int('c'), int('d')};
 
-	result := slicesUtils.SlicesMap(s, func(char rune, i int) int {return int(char)})
+	result := sliceUtils.SlicesMap(s, func(char rune, i int) int {return int(char)})
 
 	if len(result) != len(s) {
 		t.Errorf("Expected result length to equal slice arg length");
