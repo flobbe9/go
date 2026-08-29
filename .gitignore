@@ -9,6 +9,7 @@
 *.test
 ## for testing stuff
 /test
+/cmdLineMenu/test
 
 # Code coverage profiles and other test artifacts
 *.out
