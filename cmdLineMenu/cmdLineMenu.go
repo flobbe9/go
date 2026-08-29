@@ -83,11 +83,7 @@ func handleUserInput() (error) {
 	defer keyboard.Close();
 	
 	var didSelect bool;
-	for {
-		if (didSelect) {
-			break;
-		}
-
+	for !didSelect {
 		err := utils.HandleKeyPress(func(char rune, key keyboard.Key) {
 			switch key {
 			case keyboard.KeyEnter:
