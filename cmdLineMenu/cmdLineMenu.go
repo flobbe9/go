@@ -16,7 +16,7 @@ import (
 var state = &internalModels.State{};
 
 // options to choose from
-var SelectOptions []string;
+var selectOptions []string;
 
 // Passed to [Prompt()]
 var opts *models.Options;
@@ -26,14 +26,14 @@ var opts *models.Options;
 // with Enter.
 // 
 // [return] the selected option from [selectOptions].
-func Prompt(question string, selectOptions []string, optsArg models.Options) (string, error) {
-	if (len(selectOptions) <= 0) {
+func Prompt(question string, _selectOptions []string, optsArg models.Options) (string, error) {
+	if (len(_selectOptions) <= 0) {
 		return "", fmt.Errorf("Specify at least one option");
 	}
 
 	// init global vars
 	opts = &optsArg;
-	SelectOptions = selectOptions;
+	selectOptions = _selectOptions;
 	state.CurrentSelectionIndex = 0;
 
 	// print question
@@ -45,7 +45,7 @@ func Prompt(question string, selectOptions []string, optsArg models.Options) (st
 	}
 
 	// first menu-print
-	fmt.Print(formatMenu(SelectOptions, state.CurrentSelectionIndex));
+	fmt.Print(formatMenu(selectOptions, state.CurrentSelectionIndex));
 
 	// await user input
 	err := handleUserInput();
@@ -53,7 +53,7 @@ func Prompt(question string, selectOptions []string, optsArg models.Options) (st
 		return "", err;
 	}
 	
-	answer := SelectOptions[state.CurrentSelectionIndex];
+	answer := selectOptions[state.CurrentSelectionIndex];
 	
 	// print answer
 	if (opts.IsDisplayAnswer) {
@@ -91,11 +91,11 @@ func handleUserInput() (error) {
 
 			case keyboard.KeyArrowDown:
 				updateCurrentSelection(false);
-				rerender(formatMenu(SelectOptions, state.CurrentSelectionIndex), len(SelectOptions));
+				rerender(formatMenu(selectOptions, state.CurrentSelectionIndex), len(selectOptions));
 
 			case keyboard.KeyArrowUp:
 				updateCurrentSelection(true);
-				rerender(formatMenu(SelectOptions, state.CurrentSelectionIndex), len(SelectOptions));
+				rerender(formatMenu(selectOptions, state.CurrentSelectionIndex), len(selectOptions));
 			}
 		});
 
@@ -107,22 +107,23 @@ func handleUserInput() (error) {
 	return nil;
 }
 
-// Override existing stdout by moving the current terminal's cursor up by [numLines] and all the way backwards, then
-// print [content] (not printing a line break at the end).
+// Override existing stdout by moving the current terminal's cursor up by [numLines] and then
+// printing [content] (not printing a line break at the end).
 //
-// [numLines] use 0 or 1 to stay at current line?
+// [numLines] use 0 or 1 to stay at current line
 func rerender(content string, numLines int) {
 	cursorUpAnsi := ansi.CursorPreviousLine(numLines);
-	// ansi would move up a line even with 0 for some reason
 	if (numLines == 0) {
+		// 0 would move up a line for some reason
 		cursorUpAnsi = "";
 	}
 
-	fmt.Printf("%v%v%v",
-		cursorUpAnsi, 
-		ansi.EraseLine(2), 
-		content,
-	);
+	// move up
+	fmt.Printf("%v", cursorUpAnsi);
+	// delete following lines in case new content is shorter than previous content
+	fmt.Print(ansi.DeleteLine(numLines));
+
+	fmt.Print(content);
 }
 
 // [return] formatted menu line including a line break and possibly underlined if [isSelected == true]
@@ -132,6 +133,7 @@ func formatMenuLine(lineContent string, isSelected bool) string {
 	return fmt.Sprintf("> %v\n", style.Styled(lineContent));
 }
 
+// [return] the whole menu consisting of all select options. End on a new line
 func formatMenu(options []string, selectionIndex int) string {
 	var menuStr strings.Builder;
 
@@ -152,16 +154,16 @@ func updateCurrentSelection(isDecrease bool) {
 	
 	// loop user selection
 	if (state.CurrentSelectionIndex < 0) {
-		state.CurrentSelectionIndex = len(SelectOptions) - 1;
+		state.CurrentSelectionIndex = len(selectOptions) - 1;
 
-	} else if (state.CurrentSelectionIndex >= len(SelectOptions)) {
+	} else if (state.CurrentSelectionIndex >= len(selectOptions)) {
 		state.CurrentSelectionIndex = 0;
 	}
 }
 
 // Erase the menu assuming the cursor is currently at the last menu option.
 func clearMenu() {
-	numLines := len(SelectOptions);
+	numLines := len(selectOptions);
 
 	for range numLines {
 		fmt.Printf("%v%v", ansi.EraseLine(2), ansi.CursorPreviousLine(1));
