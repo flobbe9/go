@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	internalModels "github.com/flobbe9/go/cmdLineMenu/internal/models"
-	models "github.com/flobbe9/go/cmdLineMenu/models"
-	utils "github.com/flobbe9/go/utils"
+	"github.com/flobbe9/go/cmdLineMenu/models"
+	"github.com/flobbe9/go/utils"
 
 	"github.com/charmbracelet/x/ansi"
 	"github.com/eiannone/keyboard"
@@ -36,7 +36,7 @@ func Prompt(question string, selectOptions []string, optsArg models.Options) (st
 	SelectOptions = selectOptions;
 	state.CurrentSelectionIndex = 0;
 
-	// question
+	// print question
 	if (opts.IsShowSubmitHint) {
 		fmt.Printf("%v (Submit with Enter)\n", question);
 
@@ -47,26 +47,30 @@ func Prompt(question string, selectOptions []string, optsArg models.Options) (st
 	// first menu-print
 	fmt.Print(formatMenu(SelectOptions, state.CurrentSelectionIndex));
 
-	// user input
+	// await user input
 	err := handleUserInput();
 	if err != nil {
 		return "", err;
 	}
 	
-	// clean
-	if (opts.IsClearMenuOnSubmit) {
-		clearMenu();
-	}
-
 	answer := SelectOptions[state.CurrentSelectionIndex];
 	
 	// print answer
 	if (opts.IsDisplayAnswer) {
-		fmt.Printf("%v", ansi.CursorUp(1));
+		// move up to question line
+		fmt.Printf("%v", ansi.CursorUp(len(selectOptions) + 1));
+		// print answer next to question
 		fmt.Printf("%v", ansi.EraseLine(2)); // erase hint too
 		fmt.Printf("%v - %v\n", question, ansi.NewStyle().ForegroundColor(ansi.RGBColor{R: 100, G: 100, B: 255}).Styled(answer));
+		// move back to bottom most line
+		fmt.Print(ansi.CursorNextLine(len(selectOptions) + 1))
 	}
-	
+
+	// clear select options
+	if (opts.IsClearMenuOnSubmit) {
+		clearMenu();
+	}
+
 	return answer, nil;
 }
 
