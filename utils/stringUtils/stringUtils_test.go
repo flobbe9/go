@@ -98,12 +98,6 @@ func TestEndsWith_false(t *testing.T) {
 }
 
 func TestUnslash_shouldNotModify(t *testing.T) {
-	assertNotModified := func(str string) {
-		if unslashedStr := stringUtils.Unslash(str); unslashedStr != str {
-			t.Errorf("Expected '%v' to equal '%v'", str, unslashedStr);
-		}
-	}
-
 	testCases := []string{
 		"",
 		" ",
@@ -115,17 +109,13 @@ func TestUnslash_shouldNotModify(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		assertNotModified(testCase);
+		if unslashedStr := stringUtils.Unslash(testCase); unslashedStr != testCase {
+			t.Errorf("Expected '%v' to equal '%v'", testCase, unslashedStr);
+		}
 	}
 }
 
 func TestUnslash_shouldModify(t *testing.T) {
-	assertModified := func(str string) {
-		if unslashedStr := stringUtils.Unslash(str); unslashedStr == str {
-			t.Errorf("Expected '%v' not to equal '%v'", str, unslashedStr);
-		}
-	}
-
 	testCases := []string{
 		"/",
 		"/ ",
@@ -137,17 +127,13 @@ func TestUnslash_shouldModify(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		assertModified(testCase);
+		if unslashedStr := stringUtils.Unslash(testCase); unslashedStr == testCase {
+			t.Errorf("Expected '%v' not to equal '%v'", testCase, unslashedStr);
+		}
 	}
 }
 
 func TestIsBlank_shouldBeTrue(t *testing.T) {
-	assertBlank := func(str string) {
-		if !stringUtils.IsBlank(str) {
-			t.Errorf("Expected '%v' to be blank", str);
-		}
-	}
-
 	testCases := []string{
 		"",
 		" ",
@@ -155,17 +141,13 @@ func TestIsBlank_shouldBeTrue(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		assertBlank(testCase);
+		if !stringUtils.IsBlank(testCase) {
+			t.Errorf("Expected '%v' to be blank", testCase);
+		};
 	}
 }
 
 func TestIsBlank_shouldBeFalse(t *testing.T) {
-	assertNotBlank := func(str string) {
-		if stringUtils.IsBlank(str) {
-			t.Errorf("Expected '%v' not to be blank", str);
-		}
-	}
-
 	testCases := []string{
 		"d",
 		"3",
@@ -176,6 +158,8 @@ func TestIsBlank_shouldBeFalse(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		assertNotBlank(testCase);
+		if stringUtils.IsBlank(testCase) {
+			t.Errorf("Expected '%v' not to be blank", testCase);
+		}
 	}
 }
