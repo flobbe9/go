@@ -13,7 +13,7 @@ package sliceUtils
 // [return] new slice containing an equivalent element of type [N] for each element from [s]
 //
 // [panic] if an arg is [nil]
-func SlicesMap[S any, N any](s []S, mapperCallback func(element S, index int) N) []N {
+func Map[S any, N any](s []S, mapperCallback func(element S, index int) N) []N {
 	if s == nil || mapperCallback == nil {
 		panic("Nil arg");
 	}
