@@ -8,9 +8,17 @@ github.com/eiannone/keyboard v0.0.0-20220611211555-0d226195f203 h1:XBBHcIb256gUJ
 github.com/eiannone/keyboard v0.0.0-20220611211555-0d226195f203/go.mod h1:E1jcSv8FaEny+OP/5k9UxZVw9YFWGj7eI4KR/iOBqCg=
 github.com/flobbe9/go/utils v0.0.0-20260823091315-bfee4410c93f h1:cK30SdfaN0nUYZXIVuDw02htdiuNZuOXy6E1ZHz/Z54=
 github.com/flobbe9/go/utils v0.0.0-20260823091315-bfee4410c93f/go.mod h1:ro4dI9HOm1WJSBkYQPnSpwGmhfKKL7mZLMmPjX6ii8Y=
+github.com/flobbe9/go/utils v0.0.0-20260829085013-79fb17b4d677 h1:/LbF8ybysty+ymuVLh9yeAqp7EKDE8SYbByH1KAd6qw=
+github.com/flobbe9/go/utils v0.0.0-20260829085013-79fb17b4d677/go.mod h1:CjR5NOakTYnaT+iNbkXJOcGNQc5Vqi/Xo05MpSBynDo=
+github.com/flobbe9/go/utils v0.0.0-20260905085326-28cb959c0376 h1:bTtRb+KTfgawt/f7pNTxurNreXssSNY7CtAbuM4QFJ4=
+github.com/flobbe9/go/utils v0.0.0-20260905085326-28cb959c0376/go.mod h1:CjR5NOakTYnaT+iNbkXJOcGNQc5Vqi/Xo05MpSBynDo=
+github.com/flobbe9/go/utils v0.0.0-20260905180635-58e6df478883 h1:CH+Yfqt0m1Fsak+c1CEmkMqqUtDOyWtUptJJMr7IOjA=
+github.com/flobbe9/go/utils v0.0.0-20260905180635-58e6df478883/go.mod h1:CjR5NOakTYnaT+iNbkXJOcGNQc5Vqi/Xo05MpSBynDo=
 github.com/lucasb-eyer/go-colorful v1.4.0 h1:UtrWVfLdarDgc44HcS7pYloGHJUjHV/4FwW4TvVgFr4=
 github.com/lucasb-eyer/go-colorful v1.4.0/go.mod h1:R4dSotOR9KMtayYi1e77YzuveK+i7ruzyGqttikkLy0=
 github.com/mattn/go-runewidth v0.0.24 h1:cpokDiIn0MGnhdHwuWnJBITySJ20QyNGnY2kR/ay2DU=
 github.com/mattn/go-runewidth v0.0.24/go.mod h1:XBkDxAl56ILZc9knddidhrOlY5R/pDhgLpndooCuJAs=
 golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a h1:dGzPydgVsqGcTRVwiLJ1jVbufYwmzD3LfVPLKsKg+0k=
 golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
+golang.org/x/sys v0.38.0 h1:3yZWxaJjBmCWXqhN1qh02AkOnCQ1poK6oF+a7xWL6Gc=
+golang.org/x/sys v0.38.0/go.mod h1:OgkHotnGiDImocRcuBABYBEXf8A9a87e/uXjp9XT3ks=
