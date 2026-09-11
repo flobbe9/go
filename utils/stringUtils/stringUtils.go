@@ -1,6 +1,9 @@
 package stringUtils
 
-import "strings"
+import (
+	"strings"
+	"unicode/utf8"
+)
 
 func StartsWith(str, subStr string) bool {
 	// case: subStr cannot be a sub string of str
@@ -46,4 +49,12 @@ func Unslash(str string) string {
 // Indicates that [str] is empty or consists only of white space
 func IsBlank(str string) bool {
 	return len(strings.Trim(str, " ")) == 0
+}
+
+// Utf-8 safe [len()] function for strings.
+//
+// [return] the length of [str] considering that utf-8 chars take up more than 1 byte
+func Len(str string) int {
+
+	return utf8.RuneCountInString(str);
 }
