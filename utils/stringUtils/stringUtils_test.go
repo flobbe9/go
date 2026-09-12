@@ -163,3 +163,45 @@ func TestIsBlank_shouldBeFalse(t *testing.T) {
 		}
 	}
 }
+
+func TestLen_empty_shouldReturnZero(t *testing.T) {
+	str := "";
+	if len := stringUtils.Len(str); len != 0 {
+		t.Errorf("Expected length of '%v' to be 0 but was '%v'", str, len);
+	}
+}
+
+func TestLen_nonSpecialChars_shouldWork(t *testing.T) {
+	testCases := []string{
+		" ",
+		"d",
+		"3",
+		"\n",
+		"\r\n",
+		"asdfasfas",
+		" d",
+	}
+
+	for _, str := range testCases {
+		expectedLen := len(str);
+		actualLen := stringUtils.Len(str);		
+		if actualLen != expectedLen {
+			t.Errorf("Expected length of '%v' to be %v but was '%v'", str, expectedLen,  actualLen);
+		}
+	}
+}
+
+func TestLen_specialChars_shouldWork(t *testing.T) {
+	testCases := map[string]int{
+		" ö": 2,
+		"äÄöÖüÜß": 7,
+		"Unterlüß": 8,
+	}
+
+	for str, expectedLen := range testCases {
+		actualLen := stringUtils.Len(str);
+		if actualLen != expectedLen {
+			t.Errorf("Expected length of '%v' to be %v but was '%v'", str, expectedLen,  actualLen);
+		}
+	}
+}
