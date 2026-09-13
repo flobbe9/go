@@ -1,6 +1,8 @@
 package ansiUtils
 
 import (
+	"slices"
+
 	"github.com/charmbracelet/x/ansi"
 	"github.com/flobbe9/go/cmdLineMenu/constants"
 	"github.com/flobbe9/go/utils/stringUtils"
@@ -37,7 +39,7 @@ func IterateCharsConsiderAnsi(str string, callback func (char string, isAnsi boo
 	for len(str) > 0 {
 		seq, _, n, newState := ansi.DecodeSequence(str, state, p);
 
-		isAnsi := stringUtils.StartsWith(seq, constants.ANSI_ESCAPE_SEQ);
+		isAnsi := stringUtils.StartsWith(seq, string(constants.ANSI_ESCAPE_SEQ));
 		index++;
 		if !isAnsi {
 			nonAnsiCharIndex++;
@@ -66,6 +68,13 @@ func HasAnsi(str string) bool {
 // [return] [true] if [a == b] after stripping all ansi chars from both args
 func EqualsIgnoreAnsi(a, b string) bool {
 	return ansi.Strip(a) == ansi.Strip(b);
+}
+
+// Compare slices using [slices.EqualFunc] and using [EqualsIgnoreAnsi] as function.
+func EqualsSlicesIgnoreAnsi[S ~[]string](s1, s2 S) bool {
+	return slices.EqualFunc(s1, s2, func (str1, str2 string) bool {
+		return EqualsIgnoreAnsi(str1, str2);
+	});
 }
 
 // [return] [str] with characters colored with [color], even if [str] is blank

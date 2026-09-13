@@ -44,7 +44,6 @@ func Filter[S any](s []S, predicate func(element S, index int) bool) []S {
 	}
 
 	filtered := []S{};
-
 	for i, element := range s {
 		if predicate(element, i) {
 			filtered = append(filtered, element);

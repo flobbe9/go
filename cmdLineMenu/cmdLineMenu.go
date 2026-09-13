@@ -2,42 +2,54 @@ package cmdLineMenu
 
 import (
 	"fmt"
-	"strings"
+	"slices"
+	"unicode/utf8"
 
+	"github.com/flobbe9/go/cmdLineMenu/constants/ansiKey"
+	"github.com/flobbe9/go/cmdLineMenu/constants/key"
 	internalModels "github.com/flobbe9/go/cmdLineMenu/internal/models"
+	"github.com/flobbe9/go/cmdLineMenu/internal/scanner"
+	"github.com/flobbe9/go/cmdLineMenu/internal/search"
+	"github.com/flobbe9/go/cmdLineMenu/internal/utils/ansiUtils"
 	"github.com/flobbe9/go/cmdLineMenu/models"
-	"github.com/flobbe9/go/utils"
+	"github.com/flobbe9/go/utils/sliceUtils"
+	"github.com/flobbe9/go/utils/stringUtils"
 
 	"github.com/charmbracelet/x/ansi"
-	"github.com/eiannone/keyboard"
 )
 
 // Store the current state of the menu depending on user input.
 var state = &internalModels.State{};
 
 // options to choose from
-var selectOptions []string;
+var initialOptions []string; // initialOptions constant
+var question string;
 
-// Passed to [Prompt()]
-var opts *models.Options;
+// Global settings passed to [Prompt()]
+var config *models.Config;
 
 
-// Prompt user to answer [question] by selecting from [selectOptions] using Arrow-up / -down keys and submitting
+// Prompt user to answer [question] by selecting from [options] using Arrow-up / -down keys and submitting
 // with Enter.
 // 
-// [return] the selected option from [selectOptions].
-func Prompt(question string, _selectOptions []string, optsArg models.Options) (string, error) {
-	if (len(_selectOptions) <= 0) {
+// [return] the selected option from [options].
+func Prompt(_question string, _initialOptions []string, _config models.Config) (string, error) {
+	if (len(_initialOptions) <= 0) {
 		return "", fmt.Errorf("Specify at least one option");
 	}
 
 	// init global vars
-	opts = &optsArg;
-	selectOptions = _selectOptions;
-	state.CurrentSelectionIndex = 0;
+	config = &_config;
+	state.Options, initialOptions = _initialOptions, _initialOptions;
+	question = _question;
+	state.FocusedOptionIndex = 0;
+	// clear state on exit
+	defer func() {
+		state = &internalModels.State{};
+	}();
 
 	// print question
-	if (opts.IsShowSubmitHint) {
+	if (config.IsShowSubmitHint) {
 		fmt.Printf("%v (Submit with Enter)\n", question);
 
 	} else {
@@ -45,7 +57,11 @@ func Prompt(question string, _selectOptions []string, optsArg models.Options) (s
 	}
 
 	// first menu-print
-	fmt.Print(formatMenu(selectOptions, state.CurrentSelectionIndex));
+	rerender(formatMenu(state.Options, state.FocusedOptionIndex), 0);
+	if (config.IsOptionSearchEnabled) {
+		updateSearchInputPlaceholder();
+		// TODO maybe make a input-like border
+	}
 
 	// await user input
 	err := handleUserInput();
@@ -53,117 +69,223 @@ func Prompt(question string, _selectOptions []string, optsArg models.Options) (s
 		return "", err;
 	}
 	
-	answer := selectOptions[state.CurrentSelectionIndex];
-	
-	// print answer
-	if (opts.IsDisplayAnswer) {
-		// move up to question line
-		fmt.Printf("%v", ansi.CursorUp(len(selectOptions) + 1));
-		// print answer next to question
-		fmt.Printf("%v", ansi.EraseLine(2)); // erase hint too
-		fmt.Printf("%v - %v\n", question, ansi.NewStyle().ForegroundColor(ansi.RGBColor{R: 100, G: 100, B: 255}).Styled(answer));
-		// move back to bottom most line
-		fmt.Print(ansi.CursorNextLine(len(selectOptions) + 1))
+	answer := ansi.Strip(state.Options[state.FocusedOptionIndex]);
+
+	if (config.IsDisplayAnswer) {
+		printAnswer(answer);
 	}
 
-	// clear select options
-	if (opts.IsClearMenuOnSubmit) {
+	if (config.IsClearMenuOnSubmit) {
 		clearMenu();
 	}
 
 	return answer, nil;
 }
 
-// Blocks until user has pressed Enter key. Increment / Decrement [state.CurrentSelectionIndex] depending on arrow-down/-up keys.
-func handleUserInput() (error) {
-	err := keyboard.Open();
-	if err != nil {
-		return err;
-	}
-	defer keyboard.Close();
-	
-	var didSelect bool;
-	for !didSelect {
-		err := utils.HandleKeyPress(func(char rune, key keyboard.Key) {
-			switch key {
-			case keyboard.KeyEnter:
-				didSelect = true;
-
-			case keyboard.KeyArrowDown:
-				updateCurrentSelection(false);
-				rerender(formatMenu(selectOptions, state.CurrentSelectionIndex), len(selectOptions));
-
-			case keyboard.KeyArrowUp:
-				updateCurrentSelection(true);
-				rerender(formatMenu(selectOptions, state.CurrentSelectionIndex), len(selectOptions));
+// Blocks until user has pressed Enter key. Increment / Decrement [state.FocusedOptionIndex] depending on arrow-down/-up keys.
+func handleUserInput() error {
+	for {
+		err := scanner.ScanlnRaw(func(rawStdin models.RawStdin, line string, cursorIndex int) {
+			if config.IsOptionSearchEnabled {
+				state.SearchQuery = line;
+				state.SearchQueryCursorIndex = cursorIndex;
 			}
-		});
 
-		if err != nil {
+			if (rawStdin.Buff[0] == key.Enter) {
+				if config.IsOptionSearchEnabled && !isNoSearchResults() {
+					// clear search
+					fmt.Print(ansi.DeleteLine(1));
+				}
+				
+			} else if rawStdin.Buff[0] == key.Backspace || rawStdin.Buff[0] == key.CtrlBackspace {
+				// TODO repetitive
+					// try search input on top again
+				if config.IsOptionSearchEnabled {
+					prevOptionsLen := len(state.Options);
+					updateSearchInputPlaceholder();
+					searchOptionsAndUpdateStates();
+					rerender(formatMenu(state.Options, state.FocusedOptionIndex), prevOptionsLen);
+				}
+				
+			} else if rawStdin.IsUtf8() {
+				if config.IsOptionSearchEnabled {
+					prevOptionsLen := len(state.Options);
+					updateSearchInputPlaceholder();
+					searchOptionsAndUpdateStates();
+					rerender(formatMenu(state.Options, state.FocusedOptionIndex), prevOptionsLen);
+				}
+			}
+
+			switch rawStdin.GetSignificantAnsiKey() {
+			case ansiKey.ArrowDown:
+				if len(state.Options) > 0 {
+					updateFocusedOptionIndex(false);
+					rerender(formatMenu(state.Options, state.FocusedOptionIndex), len(state.Options));
+				}
+
+			case ansiKey.ArrowUp:
+				if len(state.Options) > 0 {
+					updateFocusedOptionIndex(true);
+					rerender(formatMenu(state.Options, state.FocusedOptionIndex), len(state.Options));
+				}
+
+			case ansiKey.Delete:
+				if config.IsOptionSearchEnabled {
+					prevOptionsLen := len(state.Options);
+					updateSearchInputPlaceholder();
+					searchOptionsAndUpdateStates();
+					rerender(formatMenu(state.Options, state.FocusedOptionIndex), prevOptionsLen);
+				}
+			}
+		})
+
+		// don't exit if nothing focused
+		if !isNoSearchResults() || err != nil {
 			return err;
 		}
 	}
-
-	return nil;
 }
 
-// Override existing stdout by moving the current terminal's cursor up by [numLines] and then
-// printing [content] (not printing a line break at the end).
+// Indicates that search has produced no results.
 //
-// [numLines] use 0 or 1 to stay at current line
-func rerender(content string, numLines int) {
-	cursorUpAnsi := ansi.CursorPreviousLine(numLines);
-	if (numLines == 0) {
-		// 0 would move up a line for some reason
-		cursorUpAnsi = "";
+// [return] [true] if [state.FocusedOptionIndex == -1]
+func isNoSearchResults() bool {
+	return state.FocusedOptionIndex == -1;
+}
+
+// TODO
+func searchOptionsAndUpdateStates() {
+	prevSearchResults := slices.Clone(state.Options);
+
+	if stringUtils.IsBlank(state.SearchQuery) {
+		didSearchResultsChange := !ansiUtils.EqualsSlicesIgnoreAnsi(prevSearchResults, initialOptions);
+		// don't modify menu if no changes
+		if !didSearchResultsChange {
+			return;
+		}
+		state.Options = initialOptions;
+		state.FocusedOptionIndex = 0;
+		return;
 	}
 
-	// move up
-	fmt.Printf("%v", cursorUpAnsi);
-	// delete following lines in case new content is shorter than previous content
-	fmt.Print(ansi.DeleteLine(numLines));
+	searchResults := search.SearchAndHighlightOptions(initialOptions, state.SearchQuery);
 
-	fmt.Print(content);
+	if len(searchResults) == 0 {
+		// TODO should not print '<'
+		state.Options = []string{fmt.Sprintf("No results for search '%v'", state.SearchQuery)};
+		state.FocusedOptionIndex = -1; 
+
+	} else {
+		// TODO will only underline until first highlighted substring
+		state.Options = searchResults;
+
+		didSearchResultsChange := !ansiUtils.EqualsSlicesIgnoreAnsi(prevSearchResults, searchResults);
+		if didSearchResultsChange {
+			state.FocusedOptionIndex = 0;
+		}
+	}
+}
+
+// Override existing stdout by moving the current terminal's cursor up by [backwardLines] and then
+// printing [content] (not printing a line break at the end).
+//
+// [content] to render after moving back
+//
+// [backwardLines] number of lines to move the cursor up before printing [content]. Use 0 or 1 to stay at current line
+func rerender(content []string, backwardLines int) {
+	// move up
+	if (backwardLines > 0) {
+		fmt.Printf("%v", ansi.CursorPreviousLine(backwardLines));
+	}
+
+	// delete old menu
+	fmt.Print(ansi.DeleteLine(backwardLines));
+
+	// print new menu
+	for _, line := range content {
+		fmt.Printf("%v%v", ansi.InsertLine(1), line);
+	}
+
+	// move search query cursor back
+	if config.IsOptionSearchEnabled && state.SearchQueryCursorIndex > 0 {
+		fmt.Print(ansi.CursorForward(state.SearchQueryCursorIndex));
+	}
 }
 
 // [return] formatted menu line including a line break and possibly underlined if [isSelected == true]
 func formatMenuLine(lineContent string, isSelected bool) string {
-	style := ansi.NewStyle().Underline(isSelected);
-
-	return fmt.Sprintf("> %v\n", style.Styled(lineContent));
+	return fmt.Sprintf("> %v\n", ansi.NewStyle().Underline(isSelected).Styled(lineContent));
 }
 
+// [focusedOptionIndex] the index of the option currently focused
+//
 // [return] the whole menu consisting of all select options. End on a new line
-func formatMenu(options []string, selectionIndex int) string {
-	var menuStr strings.Builder;
-
-	for i, option := range options {
-		menuStr.WriteString(formatMenuLine(option, i == selectionIndex)); 
-	}
-
-	return menuStr.String();
+// TODO remove args?
+func formatMenu(options []string, focusedOptionIndex int) []string {
+	return sliceUtils.Map(options, func(option string, i int) string {
+		return formatMenuLine(option, i == focusedOptionIndex);
+	});
 }
 
-// Increment / Decrement [state.CurrentSelectionIndex] by one making sure it loops to the start / end if out of bounds
-func updateCurrentSelection(isDecrease bool) {
+// Increment / Decrement [state.FocusedOptionIndex] by one making sure it loops to the start / end if out of bounds
+func updateFocusedOptionIndex(isDecrease bool) {
 	if (isDecrease) {
-		state.CurrentSelectionIndex--;
+		state.FocusedOptionIndex--;
 	} else {
-		state.CurrentSelectionIndex++;
+		state.FocusedOptionIndex++;
 	}
 	
 	// loop user selection
-	if (state.CurrentSelectionIndex < 0) {
-		state.CurrentSelectionIndex = len(selectOptions) - 1;
+	if (state.FocusedOptionIndex < 0) {
+		state.FocusedOptionIndex = len(state.Options) - 1;
 
-	} else if (state.CurrentSelectionIndex >= len(selectOptions)) {
-		state.CurrentSelectionIndex = 0;
+	} else if (state.FocusedOptionIndex >= len(state.Options)) {
+		state.FocusedOptionIndex = 0;
 	}
 }
 
+// Either print a greyish placeholder-like "Search..." text at the current cursor pos or, if [state.SearchQuery]
+// is not empty, erase the placeholder.
+// No line breaks
+func updateSearchInputPlaceholder() {
+	placeholder := getSearchPlaceholder();
+	searchQueryLength := utf8.RuneCountInString(state.SearchQuery);
+
+	// print placeholder
+	switch searchQueryLength {
+	case 0:
+		fmt.Print(placeholder);
+		fmt.Print(ansi.CursorBackward(len(placeholder)));
+
+	// delete placeholder
+	case 1:
+		// move cursor to index 1
+		if state.SearchQueryCursorIndex == 0 {
+			fmt.Printf("%v", ansi.CursorForward(1));
+		}
+
+		fmt.Printf("%v", ansi.DeleteCharacter(len(placeholder)));
+
+		// move cursor back
+		if state.SearchQueryCursorIndex == 0 {
+			fmt.Print(ansi.CursorBackward(1));
+		}
+	}
+}
+
+func getSearchPlaceholder() string {
+	return ansi.NewStyle().ForegroundColor(ansi.BrightBlack).Styled("Search...");
+}
+
 // Erase the menu assuming the cursor is currently at the last menu option.
+//
+// Also erase search prompt if enabled.
 func clearMenu() {
-	numLines := len(selectOptions);
+	numLines := len(state.Options);
+	if config.IsOptionSearchEnabled {
+		// TODO
+		// numLines++; // also erase search line
+	}
 
 	for range numLines {
 		fmt.Printf("%v%v", ansi.EraseLine(2), ansi.CursorPreviousLine(1));
@@ -171,4 +293,23 @@ func clearMenu() {
 
 	// clear last line
 	fmt.Printf("%v", ansi.EraseLine(2));
+}
+
+// Print [answer] next to [question] and make sure to bring the cursor back to the bottom of the menu afterwards.
+func printAnswer(answer string) {
+	linesToMoveUp := len(state.Options);
+	linesToMoveUp++;
+	if (config.IsOptionSearchEnabled) {
+		// linesToMoveUp++;
+	}
+
+	// move up to question line
+	fmt.Printf("%v%v", ansi.CursorBackward(len(state.SearchQuery)), ansi.CursorUp(linesToMoveUp));
+
+	fmt.Printf("%v", ansi.EraseLine(2)); // erase whole question line including hint
+	// reprint question line, now with answer
+	fmt.Printf("%v - %v\n", question, ansi.NewStyle().ForegroundColor(ansi.RGBColor{R: 100, G: 100, B: 255}).Styled(answer));
+
+	// move back to bottom most line
+	fmt.Print(ansi.CursorNextLine(linesToMoveUp));
 }

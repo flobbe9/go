@@ -7,11 +7,12 @@ require (
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.4.0 // indirect
 	github.com/mattn/go-runewidth v0.0.24 // indirect
-	golang.org/x/sys v0.38.0 // indirect
+	golang.org/x/sys v0.48.0 // indirect
 )
 
 require (
 	github.com/charmbracelet/x/ansi v0.11.8
 	github.com/eiannone/keyboard v0.0.0-20220611211555-0d226195f203
-	github.com/flobbe9/go/utils v0.0.0-20260905180635-58e6df478883
+	github.com/flobbe9/go/utils v0.0.0-20260911130436-7b2cc57ece4b
+	golang.org/x/term v0.46.0
 )
