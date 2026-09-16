@@ -70,7 +70,7 @@ func (this *RawStdin) LooksLikeAnsi() bool {
 	return false;
 }
 
-// The significant ansi key in this context is the 3 byte in [this.Buff]. It's used to determine the key
+// The significant ansi key in this context is the third byte in [this.Buff]. It's used to determine the key
 // beeing pressed. See also [ansiKey] package
 // 
 // [return] the 3rd byte or [key.NUL] if [this.Buff] does not look like ansi
@@ -80,4 +80,16 @@ func (this *RawStdin) GetSignificantAnsiKey() byte {
 	}
 
 	return this.Buff[2];
+}
+
+// The significant ascii key in this context is the first byte in [this.Buff]. It's used to determine the key
+// beeing pressed. See also [key] package
+// 
+// [return] the first byte or [key.NUL] if [this.Buff] does not look like ascii (which also includes utf-8)
+func (this *RawStdin) GetSignificantAsciiKey() byte {
+	if !this.IsRegularAscii() {
+		return key.NUL
+	}
+
+	return this.Buff[0];
 }

@@ -69,7 +69,10 @@ func Prompt(_question string, _initialOptions []string, _config models.Config) (
 		return "", err;
 	}
 	
-	answer := ansi.Strip(state.Options[state.FocusedOptionIndex]);
+	answer, err := getCurrentlyFocusedOption();
+	if err != nil {
+		return "", err;
+	}
 
 	if (config.IsDisplayAnswer) {
 		printAnswer(answer);
@@ -91,29 +94,24 @@ func handleUserInput() error {
 				state.SearchQueryCursorIndex = cursorIndex;
 			}
 
-			if (rawStdin.Buff[0] == key.Enter) {
-				if config.IsOptionSearchEnabled && !isNoSearchResults() {
-					// clear search
-					fmt.Print(ansi.DeleteLine(1));
-				}
-				
-			} else if rawStdin.Buff[0] == key.Backspace || rawStdin.Buff[0] == key.CtrlBackspace {
-				// TODO repetitive
-					// try search input on top again
+			handleStdinChange := func() {
 				if config.IsOptionSearchEnabled {
 					prevOptionsLen := len(state.Options);
 					updateSearchInputPlaceholder();
 					searchOptionsAndUpdateStates();
 					rerender(formatMenu(state.Options, state.FocusedOptionIndex), prevOptionsLen);
 				}
-				
-			} else if rawStdin.IsUtf8() {
-				if config.IsOptionSearchEnabled {
-					prevOptionsLen := len(state.Options);
-					updateSearchInputPlaceholder();
-					searchOptionsAndUpdateStates();
-					rerender(formatMenu(state.Options, state.FocusedOptionIndex), prevOptionsLen);
-				}
+			}
+
+			switch rawStdin.GetSignificantAsciiKey() {
+			case key.Backspace, key.CtrlBackspace:
+				handleStdinChange();
+				// TODO try search input on top again
+			}
+
+			// case: did print something
+			if rawStdin.IsUtf8() {
+				handleStdinChange();
 			}
 
 			switch rawStdin.GetSignificantAnsiKey() {
@@ -130,17 +128,12 @@ func handleUserInput() error {
 				}
 
 			case ansiKey.Delete:
-				if config.IsOptionSearchEnabled {
-					prevOptionsLen := len(state.Options);
-					updateSearchInputPlaceholder();
-					searchOptionsAndUpdateStates();
-					rerender(formatMenu(state.Options, state.FocusedOptionIndex), prevOptionsLen);
-				}
+				handleStdinChange();
 			}
 		})
 
 		// don't exit if nothing focused
-		if !isNoSearchResults() || err != nil {
+		if !areSearchResultsEmpty() || err != nil {
 			return err;
 		}
 	}
@@ -149,8 +142,17 @@ func handleUserInput() error {
 // Indicates that search has produced no results.
 //
 // [return] [true] if [state.FocusedOptionIndex == -1]
-func isNoSearchResults() bool {
+func areSearchResultsEmpty() bool {
 	return state.FocusedOptionIndex == -1;
+}
+
+// [return] the [state.Option] currently focused using [state.FocusedOptionIndex]. Return error if 
+// search results are empty.
+func getCurrentlyFocusedOption() (string, error) {
+	if areSearchResultsEmpty() {
+		return "", fmt.Errorf("Failed to get focused option. No search results");
+	}
+	return ansi.Strip(state.Options[state.FocusedOptionIndex]), nil;
 }
 
 // TODO
@@ -159,12 +161,11 @@ func searchOptionsAndUpdateStates() {
 
 	if stringUtils.IsBlank(state.SearchQuery) {
 		didSearchResultsChange := !ansiUtils.EqualsSlicesIgnoreAnsi(prevSearchResults, initialOptions);
-		// don't modify menu if no changes
-		if !didSearchResultsChange {
-			return;
-		}
 		state.Options = initialOptions;
-		state.FocusedOptionIndex = 0;
+
+		if didSearchResultsChange {
+			state.FocusedOptionIndex = 0;
+		}
 		return;
 	}
 
@@ -212,9 +213,9 @@ func rerender(content []string, backwardLines int) {
 	}
 }
 
-// [return] formatted menu line including a line break and possibly underlined if [isSelected == true]
-func formatMenuLine(lineContent string, isSelected bool) string {
-	return fmt.Sprintf("> %v\n", ansi.NewStyle().Underline(isSelected).Styled(lineContent));
+// [return] formatted menu line including a line break and possibly underlined if [isFocused == true]
+func formatMenuLine(lineContent string, isFocused bool) string {
+	return fmt.Sprintf("> %v\n", ansi.NewStyle().Underline(isFocused).Styled(lineContent));
 }
 
 // [focusedOptionIndex] the index of the option currently focused
@@ -277,36 +278,32 @@ func getSearchPlaceholder() string {
 	return ansi.NewStyle().ForegroundColor(ansi.BrightBlack).Styled("Search...");
 }
 
-// Erase the menu assuming the cursor is currently at the last menu option.
+// Erase the menu assuming the cursor is currently at the search input below the menu.
 //
 // Also erase search prompt if enabled.
 func clearMenu() {
 	numLines := len(state.Options);
-	if config.IsOptionSearchEnabled {
-		// TODO
-		// numLines++; // also erase search line
-	}
+	
+	// cursor prev will jump to start of line if line not empty for some reason, therefore + 1
+	if stringUtils.Len(state.SearchQuery) > 0 {
+		fmt.Print(ansi.CursorPreviousLine(numLines + 1));
 
-	for range numLines {
-		fmt.Printf("%v%v", ansi.EraseLine(2), ansi.CursorPreviousLine(1));
+	} else {
+		fmt.Print(ansi.CursorPreviousLine(numLines));
 	}
-
-	// clear last line
-	fmt.Printf("%v", ansi.EraseLine(2));
+	
+	// +1 for last line
+	fmt.Print(ansi.DeleteLine(numLines + 1));
 }
 
 // Print [answer] next to [question] and make sure to bring the cursor back to the bottom of the menu afterwards.
 func printAnswer(answer string) {
-	linesToMoveUp := len(state.Options);
-	linesToMoveUp++;
-	if (config.IsOptionSearchEnabled) {
-		// linesToMoveUp++;
-	}
+	linesToMoveUp := len(state.Options) + 1;
 
 	// move up to question line
 	fmt.Printf("%v%v", ansi.CursorBackward(len(state.SearchQuery)), ansi.CursorUp(linesToMoveUp));
 
-	fmt.Printf("%v", ansi.EraseLine(2)); // erase whole question line including hint
+	fmt.Print(ansi.EraseLine(2)); // erase whole question line including hint
 	// reprint question line, now with answer
 	fmt.Printf("%v - %v\n", question, ansi.NewStyle().ForegroundColor(ansi.RGBColor{R: 100, G: 100, B: 255}).Styled(answer));
 
