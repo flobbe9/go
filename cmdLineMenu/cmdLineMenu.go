@@ -286,7 +286,8 @@ func clearMenu() {
 	
 	// cursor prev will jump to start of line if line not empty for some reason, therefore + 1
 	if stringUtils.Len(state.SearchQuery) > 0 {
-		fmt.Print(ansi.CursorPreviousLine(numLines + 1));
+		// TODO verify + 1 in other terminals!!
+		fmt.Print(ansi.CursorPreviousLine(numLines));
 
 	} else {
 		fmt.Print(ansi.CursorPreviousLine(numLines));
