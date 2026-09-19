@@ -2,6 +2,7 @@ package cmdLineMenu
 
 import (
 	"fmt"
+	"regexp"
 	"slices"
 	"unicode/utf8"
 
@@ -33,6 +34,7 @@ var config *models.Config;
 // with Enter.
 // 
 // [return] the selected option from [options].
+// TODO document an example with multiple selections
 func Prompt(_question string, _initialOptions []string, _config models.Config) (string, error) {
 	if (len(_initialOptions) <= 0) {
 		return "", fmt.Errorf("Specify at least one option");
@@ -155,7 +157,7 @@ func getCurrentlyFocusedOption() (string, error) {
 	return ansi.Strip(state.Options[state.FocusedOptionIndex]), nil;
 }
 
-// TODO
+// Search [state.Options] using [state.SearchQuery] and update options and [state.FocusedOptionIndex] accordingly.
 func searchOptionsAndUpdateStates() {
 	prevSearchResults := slices.Clone(state.Options);
 
@@ -177,7 +179,6 @@ func searchOptionsAndUpdateStates() {
 		state.FocusedOptionIndex = -1; 
 
 	} else {
-		// TODO will only underline until first highlighted substring
 		state.Options = searchResults;
 
 		didSearchResultsChange := !ansiUtils.EqualsSlicesIgnoreAnsi(prevSearchResults, searchResults);
@@ -215,6 +216,14 @@ func rerender(content []string, backwardLines int) {
 
 // [return] formatted menu line including a line break and possibly underlined if [isFocused == true]
 func formatMenuLine(lineContent string, isFocused bool) string {
+	if isFocused {
+		var anyClosingSeq = regexp.MustCompile(`\x1b\[0?m`); 
+		// Make sure that underline sequence is not closed by a color sequence. 
+		// Replace all closing sequences with underline opening seq. Ansi still works if there're more opening 
+		// sequences than closing ones, as long as the whole string ends with a closing sequence.
+		lineContent = anyClosingSeq.ReplaceAllString(lineContent, "$0\x1b[4m");
+	}
+
 	return fmt.Sprintf("> %v\n", ansi.NewStyle().Underline(isFocused).Styled(lineContent));
 }
 
@@ -281,20 +290,18 @@ func getSearchPlaceholder() string {
 // Erase the menu assuming the cursor is currently at the search input below the menu.
 //
 // Also erase search prompt if enabled.
+//
+// Cursor will end up at search input line.
 func clearMenu() {
 	numLines := len(state.Options);
-	
-	// cursor prev will jump to start of line if line not empty for some reason, therefore + 1
-	if stringUtils.Len(state.SearchQuery) > 0 {
-		// TODO verify + 1 in other terminals!!
-		fmt.Print(ansi.CursorPreviousLine(numLines));
 
-	} else {
-		fmt.Print(ansi.CursorPreviousLine(numLines));
-	}
+	// move up to first option
+	fmt.Print(ansi.CursorPreviousLine(numLines));
 	
-	// +1 for last line
-	fmt.Print(ansi.DeleteLine(numLines + 1));
+	// delete menu
+	fmt.Print(ansi.DeleteLine(numLines));
+	// delete search input line as well
+	fmt.Print(ansi.DeleteLine(1));
 }
 
 // Print [answer] next to [question] and make sure to bring the cursor back to the bottom of the menu afterwards.
@@ -302,11 +309,14 @@ func printAnswer(answer string) {
 	linesToMoveUp := len(state.Options) + 1;
 
 	// move up to question line
-	fmt.Printf("%v%v", ansi.CursorBackward(len(state.SearchQuery)), ansi.CursorUp(linesToMoveUp));
+	fmt.Print(ansi.CursorPreviousLine(linesToMoveUp))
 
-	fmt.Print(ansi.EraseLine(2)); // erase whole question line including hint
 	// reprint question line, now with answer
-	fmt.Printf("%v - %v\n", question, ansi.NewStyle().ForegroundColor(ansi.RGBColor{R: 100, G: 100, B: 255}).Styled(answer));
+	fmt.Printf("%v%v - %v", 
+		ansi.EraseLine(2), 
+		question,
+		ansi.NewStyle().ForegroundColor(ansi.RGBColor{R: 100, G: 100, B: 255}).Styled(answer),
+	);
 
 	// move back to bottom most line
 	fmt.Print(ansi.CursorNextLine(linesToMoveUp));
