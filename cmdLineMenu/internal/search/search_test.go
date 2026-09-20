@@ -47,71 +47,71 @@ func TestFindMatchingOptionSubstrings_shouldReturnSubstrs(t *testing.T) {
 
 	option = "s";
 	searchQuery = "s";
-	expectedSubstrs = []models.OptionSubstring{{Substr: "s", Index: 0}};
+	expectedSubstrs = []models.OptionSubstring{{Substr: "s", Start: 0}};
 	assertEquals();
 	
 	option = "something";
 	searchQuery = "s";
-	expectedSubstrs = []models.OptionSubstring{{Substr: "s", Index: 0}};
+	expectedSubstrs = []models.OptionSubstring{{Substr: "s", Start: 0}};
 	assertEquals();
 		
 	option = "something";
 	searchQuery = "so";
-	expectedSubstrs = []models.OptionSubstring{{Substr: "s", Index: 0}, {Substr: "so", Index: 0}, {Substr: "o", Index: 1}};
+	expectedSubstrs = []models.OptionSubstring{{Substr: "so", Start: 0}};
 	assertEquals();
 	
 	option = "something";
 	searchQuery = "m";
-	expectedSubstrs = []models.OptionSubstring{{Substr: "m", Index: 2}};
+	expectedSubstrs = []models.OptionSubstring{{Substr: "m", Start: 2}};
 	assertEquals();
 	
 	option = "something";
 	searchQuery = "g";
-	expectedSubstrs = []models.OptionSubstring{{Substr: "g", Index: 8}};
+	expectedSubstrs = []models.OptionSubstring{{Substr: "g", Start: 8}};
 	assertEquals();
 	
 	option = "something";
 	searchQuery = "om";
-	expectedSubstrs = []models.OptionSubstring{{Substr: "o", Index: 1}, {Substr: "om", Index: 1}, {Substr: "m", Index: 2}};
+	expectedSubstrs = []models.OptionSubstring{{Substr: "om", Start: 1}};
 	assertEquals();
 		
 	// only first occurrence
 	option = "test";
 	searchQuery = "t";
-	expectedSubstrs = []models.OptionSubstring{{Substr: "t", Index: 0}};
+	expectedSubstrs = []models.OptionSubstring{{Substr: "t", Start: 0}};
 	assertEquals();
 	// duplicates are fine though
 	option = "test";
 	searchQuery = "tt";
-	expectedSubstrs = []models.OptionSubstring{{Substr: "t", Index: 0}, {Substr: "t", Index: 0}};
+	expectedSubstrs = []models.OptionSubstring{{Substr: "t", Start: 0}};
 	assertEquals();
 
 	// only matches in order
 	option = "test";
 	searchQuery = "se";
-	expectedSubstrs = []models.OptionSubstring{{Substr: "s", Index: 2}};
+	expectedSubstrs = []models.OptionSubstring{{Substr: "s", Start: 2}};
 	assertEquals();
 			
 	// should trim
 	option = " test ";
 	searchQuery = " t ";
-	expectedSubstrs = []models.OptionSubstring{{Substr: "t", Index: 0}};
+	expectedSubstrs = []models.OptionSubstring{{Substr: "t", Start: 0}};
 	assertEquals();
 				
 	// should not consider whitespace in between a result
 	option = "test";
 	searchQuery = "t e";
-	expectedSubstrs = []models.OptionSubstring{{Substr: "t", Index: 0}, {Substr: "e", Index: 1}};
+	expectedSubstrs = []models.OptionSubstring{{Substr: "t", Start: 0}, {Substr: "e", Start: 1}};
 	assertEquals();
 
 	option = "t est";
 	searchQuery = "t e";
-	expectedSubstrs = []models.OptionSubstring{{Substr: "t", Index: 0}, {Substr: "e", Index: 2}};
+	expectedSubstrs = []models.OptionSubstring{{Substr: "t", Start: 0}, {Substr: "e", Start: 2}};
 	assertEquals();
 					
 	option = "t est";
 	searchQuery = "te";
-	expectedSubstrs = []models.OptionSubstring{{Substr: "t", Index: 0}, {Substr: "e", Index: 2}};
+	expectedSubstrs = []models.OptionSubstring{{Substr: "t", Start: 0}, {Substr: "e", Start: 2}};
 	assertEquals();
 }
 
@@ -260,29 +260,47 @@ func TestSearchAndHighlightOptions_shouldReturnResults(t *testing.T) {
 			t.Errorf("Expected results to equal %v but was %v", expectedResults, results);
 		}
 	}
-
 	
+	// filter non-matching options
 	options = []string{"banana", "apple", "orange"};
 	searchQuery = "p";
 	expectedResults = []string{"a" + colored("p") + "ple"};
 	assertResultsEqualOptions();
 
-	// maintain order
-	options = []string{"banana", "apple", "orange"};
+	// maintain order across matching options
+	options = []string{"banana", "_apple", "orange"};
 	searchQuery = "a";
-	expectedResults = []string{"b" + colored("a") + "nana", colored("a") + "pple", "or" + colored("a") + "nge"};
+	expectedResults = []string{"b" + colored("a") + "nana", "_" + colored("a") + "pple", "or" + colored("a") + "nge"};
 	assertResultsEqualOptions();
-		
-	// reorder
-	options = []string{"banana", "apple", "orange"};
-	searchQuery = "app";
-	expectedResults = []string{colored("app") + "le", "b" + colored("a") + "nana", "or" + colored("a") + "nge"};
+
+	// prefer more char matches
+	options = []string{"0102", "01", "010203"};
+	searchQuery = "123";
+	expectedResults = []string{
+		"0" + colored("1") + "0" + colored("2") + "0" + colored("3"),
+		"0" + colored("1") + "0" + colored("2"),
+		"0" + colored("1"),
+	};
 	assertResultsEqualOptions();
-			
-	// prefer consecutive match
-	options = []string{"acb", "abc"};
-	searchQuery = "ab";
-	expectedResults = []string{colored("ab") + "c", colored("a") + "c" + colored("b")}; // both have 2 matches but one is consecutive
+
+	// prefer more substrings longer than 1
+	options = []string{"012", "0102", "0123"};
+	searchQuery = "123";
+	expectedResults = []string{
+		"0" + colored("123"),
+		"0" + colored("12"),
+		"0" + colored("1") + "0" + colored("2"),
+	};
+	assertResultsEqualOptions();
+	
+	// prefer startswith no matter what
+	options = []string{"012", "1noothermatch", "0123"};
+	searchQuery = "123";
+	expectedResults = []string{
+		colored("1") + "noothermatch",
+		"0" + colored("123"),
+		"0" + colored("12"),
+	};
 	assertResultsEqualOptions();
 }
 

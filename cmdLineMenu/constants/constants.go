@@ -6,7 +6,7 @@ import (
 
 var ANSWER_TEXT_COLOR = ansi.RGBColor{R: 100, G: 100, B: 255}
 // Every ansi opening and closing sequence starts with this string (decimal 27)
-var ANSI_ESCAPE_SEQ = '\x1b';
+const ANSI_ESCAPE_SEQ = '\x1b';
 
 // The highest char code for regular ascii
 const ASCII_MAX = 127;
