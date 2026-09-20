@@ -77,13 +77,19 @@ func TestFindMatchingOptionSubstrings_shouldReturnSubstrs(t *testing.T) {
 		
 	// only first occurrence
 	option = "test";
-	searchQuery = "t";
-	expectedSubstrs = []models.OptionSubstring{{Substr: "t", Start: 0}};
-	assertEquals();
-	// duplicates are fine though
-	option = "test";
 	searchQuery = "tt";
 	expectedSubstrs = []models.OptionSubstring{{Substr: "t", Start: 0}};
+	assertEquals();
+	option = "testing";
+	searchQuery = "ti";
+	expectedSubstrs = []models.OptionSubstring{{Substr: "t", Start: 0}, {Substr: "i", Start: 4}};
+	assertEquals();
+
+	// dont forget last match
+	option = "ranken";
+	searchQuery = "ren";
+	// goes from {r: 0, e: 4, en: 4} to {r: 0, en: 4}, even though {e} and {en} have the same index
+	expectedSubstrs = []models.OptionSubstring{{Substr: "r", Start: 0}, {Substr: "en", Start: 4}};
 	assertEquals();
 
 	// only matches in order

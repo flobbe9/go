@@ -81,12 +81,19 @@ func findMatchingOptionSubstrings(option, searchQuery string) []models.OptionSub
 			continue;
 		}
 
+		prevIndex := -1;
 		for j := i + 1; j <= len(searchQuery); j++ {
 			searchQuerySubstr := searchQuery[i:j];
 			if strings.Contains(searchQuerySubstr, " ") {
 				break;
 			}
+
 			index := strings.Index(option, searchQuerySubstr);
+			
+			// case: searchquery substr matches multiple option substrs
+			if prevIndex >= 0 && prevIndex != index {
+				break;
+			}
 
 			searchQuerySubstrDoesNotMatchOption := index == -1;
 			searchQuerySubstrNotInOrder := len(matchingOptionSubstrings) > 0 && matchingOptionSubstrings[len(matchingOptionSubstrings) - 1].Start > index;
@@ -95,6 +102,7 @@ func findMatchingOptionSubstrings(option, searchQuery string) []models.OptionSub
 			}
 
 			matchingOptionSubstrings = append(matchingOptionSubstrings, models.OptionSubstring{Substr: searchQuerySubstr, Start: index});
+			prevIndex = index;
 		}
 	}
 
@@ -166,21 +174,18 @@ func filterOverlappingOptionSubstrings(optionSubstrs []models.OptionSubstring) [
 
 	// squash options with same index sothat the last one stays
 	squashedOptionSubstrs := []models.OptionSubstring{};
-	var prev models.OptionSubstring;
+	var prev models.OptionSubstring = optionSubstrs[0];
 	for i := 1; i < len(optionSubstrs); i++ {
 		cur := optionSubstrs[i];
-		prev = optionSubstrs[i - 1];
 		isCurIndexDifferent := cur.Start != prev.Start;
 		
 		if isCurIndexDifferent {
 			squashedOptionSubstrs = append(squashedOptionSubstrs, prev);
 		}
 			
-		// add last element
-		if i == len(optionSubstrs) - 1 && (isCurIndexDifferent || len(squashedOptionSubstrs) == 0) { 
-			squashedOptionSubstrs = append(squashedOptionSubstrs, cur);
-		}
+		prev = cur;
 	}
+	squashedOptionSubstrs = append(squashedOptionSubstrs, prev);
 	
 	// filter out overlapping substrs
 	optionSubstrsWithoutOverlaps := []models.OptionSubstring{squashedOptionSubstrs[0]};
