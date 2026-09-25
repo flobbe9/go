@@ -1,20 +1,24 @@
 name: pipeline
-description: TODO
+description: Test a specified go package and tag it with a specified version.
 
 on:
     workflow_dispatch:
         inputs:
             package:
-                description: 'Package'
+                description: Package
                 required: true
                 type: choice
                 options:
                     - utils
                     - cmdLineMenu
             version:
-                description: 'Version for the tag'
+                description: Version for the tag
                 required: true
                 type: string
+            dry_run:
+                description: Set to false to skip tagging
+                type: boolean
+                default: false
 
 jobs:
     tests:
@@ -33,8 +37,9 @@ jobs:
             - name: Run tests recursively
               run: go test ./...
               working-directory: ./${{ inputs.package }}
-    
+
     tag:
+        if: ${{ inputs.dry_run == false }}
         runs-on: ubuntu-latest
         permissions:
             # needed for pushing tags
@@ -50,10 +55,3 @@ jobs:
                 git config user.email "github-actions[bot]@users.noreply.github.com"
                 git tag ${{ env.TAG }}
                 git push origin ${{ env.TAG }}
-
-# input
-    # package
-    # version
-# run tests
-# if 
-    # create tag
