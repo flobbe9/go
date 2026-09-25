@@ -127,3 +127,45 @@ func TestFilter_shouldFilterByPredicateTrue(t *testing.T) {
 	};
 	assertFiltered();
 }
+
+func TestLast_emptyOrNilArg_shouldReturnNil(t *testing.T) {
+	var arg []string;
+
+	assertNil := func() {
+		last := Last(arg);
+		if last != nil {
+			t.Errorf("Expected last element of slice %v to be nil but was %v", arg, last);
+		}	
+	}
+
+	// nil
+	assertNil();
+
+	// empty
+	arg = []string{};
+	assertNil();
+}
+
+func TestLast_shouldReturnLast(t *testing.T) {
+	var arg []string;
+	var expectedLast string;
+
+	assertEquals := func() {
+		last := Last(arg);
+		if *last != expectedLast {
+			t.Errorf("Expected last element of slice %v to be '%v' but was '%v'", arg, expectedLast, last);
+		}	
+	}
+
+	arg = []string{"", " "};
+	expectedLast = " ";
+	assertEquals();
+
+	arg = []string{"a", "b"};
+	expectedLast = "b";
+	assertEquals();
+	
+	arg = []string{"b"};
+	expectedLast = "b";
+	assertEquals();
+}

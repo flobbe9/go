@@ -52,3 +52,11 @@ func Filter[S any](s []S, predicate func(element S, index int) bool) []S {
 
 	return filtered;
 }
+
+func Last[S any](s []S) *S {
+	if len(s) == 0 {
+		return nil;
+	}
+
+	return &s[len(s) - 1];
+}
