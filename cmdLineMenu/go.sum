@@ -8,6 +8,8 @@ github.com/eiannone/keyboard v0.0.0-20220611211555-0d226195f203 h1:XBBHcIb256gUJ
 github.com/eiannone/keyboard v0.0.0-20220611211555-0d226195f203/go.mod h1:E1jcSv8FaEny+OP/5k9UxZVw9YFWGj7eI4KR/iOBqCg=
 github.com/flobbe9/go/utils v0.0.0-20260911130436-7b2cc57ece4b h1:2NrLqRjn9TrmNQqbES1PbMNdlxW3D2Uy8+8B2seT08c=
 github.com/flobbe9/go/utils v0.0.0-20260911130436-7b2cc57ece4b/go.mod h1:CjR5NOakTYnaT+iNbkXJOcGNQc5Vqi/Xo05MpSBynDo=
+github.com/flobbe9/go/utils v0.0.0-20260925095000-1948527c9de5 h1:twRsf4Q7TuSpNvJk8tQCNuXdMvjG+Xm3rLypL/pWvIg=
+github.com/flobbe9/go/utils v0.0.0-20260925095000-1948527c9de5/go.mod h1:VZWctFS9WYLkR+3sPSB8PVbmnyWe4JAtJ9ykKUXVLXQ=
 github.com/lucasb-eyer/go-colorful v1.4.0 h1:UtrWVfLdarDgc44HcS7pYloGHJUjHV/4FwW4TvVgFr4=
 github.com/lucasb-eyer/go-colorful v1.4.0/go.mod h1:R4dSotOR9KMtayYi1e77YzuveK+i7ruzyGqttikkLy0=
 github.com/mattn/go-runewidth v0.0.24 h1:cpokDiIn0MGnhdHwuWnJBITySJ20QyNGnY2kR/ay2DU=
