@@ -44,8 +44,6 @@ jobs:
             TAG: ${{ inputs.package }}/${{ inputs.version }}
         steps:
             - uses: actions/checkout@v7
-            #   with: 
-            #     token: ${{ secrets.PUSH_TAG_PAT }}
             - name: Push tag '${{ env.TAG }}'
               run: |
                 git config user.name "github-actions[bot]"
