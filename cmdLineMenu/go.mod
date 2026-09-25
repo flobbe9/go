@@ -13,6 +13,6 @@ require (
 
 require (
 	github.com/charmbracelet/x/ansi v0.11.8
-	github.com/flobbe9/go/utils v0.0.0-20260925095000-1948527c9de5
+	github.com/flobbe9/go/utils v0.1.0
 	golang.org/x/term v0.46.0
 )
