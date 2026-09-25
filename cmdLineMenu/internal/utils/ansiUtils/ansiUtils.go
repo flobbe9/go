@@ -27,7 +27,6 @@ import (
 // Wont handle panics of callback.
 //
 // [return] the error returned from [callback] or [nil]
-// TODO private
 func IterateCharsConsiderAnsi(str string, callback func (char string, isAnsi bool, index, ansiCharIndex, nonAnsiCharIndex int) error) error {
 	if (len(str) == 0 || callback == nil) {
 		return nil;

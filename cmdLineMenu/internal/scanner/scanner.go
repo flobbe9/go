@@ -128,7 +128,6 @@ func ScanlnRaw(callback func (rawStdin models.RawStdin, line string, cursorIndex
 			break;
 
 		} else if rawStdin.Buff[0] == key.CtrlBackspace {
-			// TODO have this behave like normal ansi terminal
 			line = []rune{};
 			fmt.Print(ansi.DeleteLine(1));
 			cursorIndex = 0;

@@ -29,12 +29,15 @@ var question string;
 // Global settings passed to [Prompt()]
 var config *models.Config;
 
+// The prefix for every menu option
+const OPTION_PREFIX = "> ";
+const NO_SEARCH_RESULTS_MSG_START = "No results for search";
+
 
 // Prompt user to answer [question] by selecting from [options] using Arrow-up / -down keys and submitting
 // with Enter.
 // 
 // [return] the selected option from [options].
-// TODO document an example with multiple selections
 func Prompt(_question string, _initialOptions []string, _config models.Config) (string, error) {
 	if (len(_initialOptions) <= 0) {
 		return "", fmt.Errorf("Specify at least one option");
@@ -59,10 +62,9 @@ func Prompt(_question string, _initialOptions []string, _config models.Config) (
 	}
 
 	// first menu-print
-	rerender(formatMenu(state.Options, state.FocusedOptionIndex), 0);
+	rerender(formatMenu(), 0);
 	if (config.IsOptionSearchEnabled) {
 		updateSearchInputPlaceholder();
-		// TODO maybe make a input-like border
 	}
 
 	// await user input
@@ -101,14 +103,13 @@ func handleUserInput() error {
 					prevOptionsLen := len(state.Options);
 					updateSearchInputPlaceholder();
 					searchOptionsAndUpdateStates();
-					rerender(formatMenu(state.Options, state.FocusedOptionIndex), prevOptionsLen);
+					rerender(formatMenu(), prevOptionsLen);
 				}
 			}
 
 			switch rawStdin.GetSignificantAsciiKey() {
 			case key.Backspace, key.CtrlBackspace:
 				handleStdinChange();
-				// TODO try search input on top again
 			}
 
 			// case: did print something
@@ -120,13 +121,13 @@ func handleUserInput() error {
 			case ansiKey.ArrowDown:
 				if len(state.Options) > 0 {
 					updateFocusedOptionIndex(false);
-					rerender(formatMenu(state.Options, state.FocusedOptionIndex), len(state.Options));
+					rerender(formatMenu(), len(state.Options));
 				}
 
 			case ansiKey.ArrowUp:
 				if len(state.Options) > 0 {
 					updateFocusedOptionIndex(true);
-					rerender(formatMenu(state.Options, state.FocusedOptionIndex), len(state.Options));
+					rerender(formatMenu(), len(state.Options));
 				}
 
 			case ansiKey.Delete:
@@ -174,8 +175,7 @@ func searchOptionsAndUpdateStates() {
 	searchResults := search.SearchAndHighlightOptions(initialOptions, state.SearchQuery);
 
 	if len(searchResults) == 0 {
-		// TODO should not print '<'
-		state.Options = []string{fmt.Sprintf("No results for search '%v'", state.SearchQuery)};
+		state.Options = []string{fmt.Sprintf("%v '%v'", NO_SEARCH_RESULTS_MSG_START, state.SearchQuery)};
 		state.FocusedOptionIndex = -1; 
 
 	} else {
@@ -224,16 +224,19 @@ func formatMenuLine(lineContent string, isFocused bool) string {
 		lineContent = anyClosingSeq.ReplaceAllString(lineContent, "$0\x1b[4m");
 	}
 
-	return fmt.Sprintf("> %v\n", ansi.NewStyle().Underline(isFocused).Styled(lineContent));
+	line := fmt.Sprintf("%v\n", ansi.NewStyle().Underline(isFocused).Styled(lineContent));
+
+	if !stringUtils.StartsWith(lineContent, NO_SEARCH_RESULTS_MSG_START) {
+		line = fmt.Sprintf("%v%v", OPTION_PREFIX, line);
+	}
+
+	return line;
 }
 
-// [focusedOptionIndex] the index of the option currently focused
-//
 // [return] the whole menu consisting of all select options. End on a new line
-// TODO remove args?
-func formatMenu(options []string, focusedOptionIndex int) []string {
-	return sliceUtils.Map(options, func(option string, i int) string {
-		return formatMenuLine(option, i == focusedOptionIndex);
+func formatMenu() []string {
+	return sliceUtils.Map(state.Options, func(option string, i int) string {
+		return formatMenuLine(option, i == state.FocusedOptionIndex);
 	});
 }
 
