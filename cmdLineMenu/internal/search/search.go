@@ -15,9 +15,10 @@ import (
 	"github.com/flobbe9/go/utils/stringUtils"
 )
 
-// Assume strs are unique
-// TODO
-// should consider the second occurrence of a letter for the rest of the string
+// Use [searchQuery] to filter [options] by matching certain substrings, don't keep options without matches. 
+// Sort them by best matching option. Highlight matching chars in each option.
+//
+// [return] copy of [options], sorted and highlighted
 func SearchAndHighlightOptions(options []string, searchQuery string) []string {
 	if (len(options) == 0 || stringUtils.IsBlank(searchQuery)) {
 		return options;
@@ -74,40 +75,55 @@ func findMatchingOptionSubstrings(option, searchQuery string) []models.OptionSub
 	searchQuery = strings.Trim(searchQuery, " ");
 
 	matchingOptionSubstrings := []models.OptionSubstring{};
-
+	
 	// go through all possible searchQuery substrings
 	for i := 0; i < len(searchQuery); i++ {
 		if searchQuery[i] == ' ' {
 			continue;
 		}
+		
+		optSubstr := option;
+		lastMatchingOptSubstr := sliceUtils.Last(matchingOptionSubstrings);
+		// the starting index of the last matching option, relative to the whole option
+		var lastMatchingOptSubstrAbsIndex int;
 
-		prevIndex := -1;
-		for j := i + 1; j <= len(searchQuery); j++ {
-			searchQuerySubstr := searchQuery[i:j];
-			if strings.Contains(searchQuerySubstr, " ") {
+		// avoid searching the same option chars multiple times by moving option substr forward
+		if lastMatchingOptSubstr != nil {
+			lastMatchingOptSubstrAbsIndex = lastMatchingOptSubstr.Start + len(lastMatchingOptSubstr.Substr); 
+			optSubstr = option[lastMatchingOptSubstrAbsIndex:]
+		}
+
+		// iterate backwards matching large substrings first
+		for n := len(searchQuery); n > 0; n-- {
+			// case: end of sqSubstr
+			if i == n {
 				break;
 			}
 
-			index := strings.Index(option, searchQuerySubstr);
+			sqSubstr := searchQuery[i:n];
+			if strings.Contains(sqSubstr, " ") {
+				continue;
+			}
+
+			index := strings.Index(optSubstr, sqSubstr);
 			
-			// case: searchquery substr matches multiple option substrs
-			if prevIndex >= 0 && prevIndex != index {
+			if index != -1 {
+				// fix index offset created by moving optSubstr forward
+				if lastMatchingOptSubstr != nil {
+					index += lastMatchingOptSubstrAbsIndex;
+				}
+
+				matchingOptionSubstrings = append(matchingOptionSubstrings, models.OptionSubstring{Substr: sqSubstr, Start: index});
+
+				// move sqSubstr along to avoid matching it multiple times
+				i += len(sqSubstr) - 1; // -1 to even out for loops own i++
+
 				break;
 			}
-
-			searchQuerySubstrDoesNotMatchOption := index == -1;
-			searchQuerySubstrNotInOrder := len(matchingOptionSubstrings) > 0 && matchingOptionSubstrings[len(matchingOptionSubstrings) - 1].Start > index;
-			if searchQuerySubstrDoesNotMatchOption || searchQuerySubstrNotInOrder {
-				break;
-			}
-
-			matchingOptionSubstrings = append(matchingOptionSubstrings, models.OptionSubstring{Substr: searchQuerySubstr, Start: index});
-			prevIndex = index;
 		}
 	}
 
-	// extra iterations, shame on me
-	matchingOptionSubstrings = filterOverlappingOptionSubstrings(matchingOptionSubstrings);
+	slog.Debug(fmt.Sprintf("Substrings with indices for option '%v': %v", option, matchingOptionSubstrings))
 
 	return matchingOptionSubstrings;
 }
@@ -158,48 +174,6 @@ func highlightOption(option string, optionSubstrs []models.OptionSubstring) stri
 	return highlightedOption.String();
 }
 
-// Remove overlapping substrings keeping only the longest ones but always the one with the lowest index
-// Assume that [optionSubstrs] is sorted by [Index].
-//
-// [optionSubstrs] matching substrings for an option
-//
-// [return] non-overlapping substrings
-func filterOverlappingOptionSubstrings(optionSubstrs []models.OptionSubstring) []models.OptionSubstring {
-	slog.Debug(fmt.Sprintf("Substrings with indices: %v", optionSubstrs))
-
-	// case: no overlap possible
-	if len(optionSubstrs) <= 1 {
-		return optionSubstrs;
-	}
-
-	// squash options with same index sothat the last one stays
-	squashedOptionSubstrs := []models.OptionSubstring{};
-	var prev models.OptionSubstring = optionSubstrs[0];
-	for i := 1; i < len(optionSubstrs); i++ {
-		cur := optionSubstrs[i];
-		isCurIndexDifferent := cur.Start != prev.Start;
-		
-		if isCurIndexDifferent {
-			squashedOptionSubstrs = append(squashedOptionSubstrs, prev);
-		}
-			
-		prev = cur;
-	}
-	squashedOptionSubstrs = append(squashedOptionSubstrs, prev);
-	
-	// filter out overlapping substrs
-	optionSubstrsWithoutOverlaps := []models.OptionSubstring{squashedOptionSubstrs[0]};
-	for _, squashedOptionSubstr := range squashedOptionSubstrs {
-		lastOptionWithSubstrWithoutOverlap := optionSubstrsWithoutOverlaps[len(optionSubstrsWithoutOverlaps) - 1];
-		if !squashedOptionSubstr.IsOverlapping(lastOptionWithSubstrWithoutOverlap) {
-			optionSubstrsWithoutOverlaps = append(optionSubstrsWithoutOverlaps, squashedOptionSubstr);
-		}
-	}
-	slog.Debug(fmt.Sprintf("Substrings with distinct indices: %v", optionSubstrsWithoutOverlaps))
-
-	return optionSubstrsWithoutOverlaps;
-}
-
 // Determine ranking points for [option] depending on [relevantSubstrs].
 //
 // [relevantSubstrs] derrived from [filterOverlappingOptionSubstrings], expected to be ordered
@@ -212,25 +186,23 @@ func calculateSearchRankingPoints(option string, relevantSubstrs []models.Option
 
 	var points int;
 	var totalMatchingChars int;
-	var numSubstrsLongerThan1 int;
+	// var numSubstrsLongerThan1 int;
 
 	for _, relevantOptionSubstr := range relevantSubstrs {
 		totalMatchingChars += stringUtils.Len(relevantOptionSubstr.Substr);
-		if len(relevantOptionSubstr.Substr) > 1 {
-			numSubstrsLongerThan1++;
+		if lenSubstr := len(relevantOptionSubstr.Substr); lenSubstr > 1 {
+			points += lenSubstr;
 		}
 	}
+	slog.Debug(fmt.Sprintf("Search points - num chars for long substrs: %v", points));
 
 	points += totalMatchingChars;
-	slog.Debug(fmt.Sprintf("Search points for total num chars: %v", points));
-
-	points += numSubstrsLongerThan1;
-	slog.Debug(fmt.Sprintf("Plus search points for long substrs: %v", points));
+	slog.Debug(fmt.Sprintf("Plus search points - total num chars: %v", points));
 
 	// always prioritise starts with
 	if stringUtils.StartsWith(option, relevantSubstrs[0].Substr) {
 		points += math.MaxInt / 2;
-		slog.Debug(fmt.Sprintf("Plus search points for startswith: %v", points));
+		slog.Debug(fmt.Sprintf("Plus search points - startswith: %v", points));
 	}
 
 	return points;

@@ -75,20 +75,33 @@ func TestFindMatchingOptionSubstrings_shouldReturnSubstrs(t *testing.T) {
 	expectedSubstrs = []models.OptionSubstring{{Substr: "om", Start: 1}};
 	assertEquals();
 		
-	// only first occurrence
+	// partial match
+	option = "something";
+	searchQuery = "omy";
+	expectedSubstrs = []models.OptionSubstring{{Substr: "om", Start: 1}};
+	assertEquals();
+		
+	// multiple occurrences should match onyl once
 	option = "test";
-	searchQuery = "tt";
+	searchQuery = "t";
 	expectedSubstrs = []models.OptionSubstring{{Substr: "t", Start: 0}};
 	assertEquals();
+
+	// search query should not match the same option substr multiple times
+	option = "test";
+	searchQuery = "tt";
+	expectedSubstrs = []models.OptionSubstring{{Substr: "t", Start: 0}, {Substr: "t", Start: 3}};
+	assertEquals();
+	
+	// prefer longer substring over shorter first occurrence occurrence
 	option = "testing";
 	searchQuery = "ti";
-	expectedSubstrs = []models.OptionSubstring{{Substr: "t", Start: 0}, {Substr: "i", Start: 4}};
+	expectedSubstrs = []models.OptionSubstring{{Substr: "ti", Start: 3}};
 	assertEquals();
 
 	// dont forget last match
 	option = "ranken";
 	searchQuery = "ren";
-	// goes from {r: 0, e: 4, en: 4} to {r: 0, en: 4}, even though {e} and {en} have the same index
 	expectedSubstrs = []models.OptionSubstring{{Substr: "r", Start: 0}, {Substr: "en", Start: 4}};
 	assertEquals();
 
@@ -200,10 +213,10 @@ func TestHighlightOption_shouldReturnHighlightedOptionIfSearchQueryDoesMatchOpti
 	assertNonAnsiCharsNotModified();
 	assertHighlighted();
 
-	// first occurrence only
+	// multiple occurrences
 	option = "option";
 	searchQuery = "oo"; 
-	expectedHighlightedOption = colored("o") + "ption";
+	expectedHighlightedOption = colored("o") + "pti" + colored("o") + "n";
 	highlightedOption = highlightOption(option, findMatchingOptionSubstrings(option, searchQuery));
 	assertNonAnsiCharsNotModified();
 	assertHighlighted();
@@ -211,7 +224,15 @@ func TestHighlightOption_shouldReturnHighlightedOptionIfSearchQueryDoesMatchOpti
 	// only in order
 	option = "option";
 	searchQuery = "po"; 
-	expectedHighlightedOption = "o" + colored("p") + "tion";
+	expectedHighlightedOption = "o" + colored("p") + "ti" + colored("o") + "n";
+	highlightedOption = highlightOption(option, findMatchingOptionSubstrings(option, searchQuery));
+	assertNonAnsiCharsNotModified();
+	assertHighlighted();
+	
+	// symbols
+	option = "o-p-tion";
+	searchQuery = "o-"; 
+	expectedHighlightedOption = colored("o-") + "p-tion";
 	highlightedOption = highlightOption(option, findMatchingOptionSubstrings(option, searchQuery));
 	assertNonAnsiCharsNotModified();
 	assertHighlighted();
@@ -289,12 +310,12 @@ func TestSearchAndHighlightOptions_shouldReturnResults(t *testing.T) {
 	};
 	assertResultsEqualOptions();
 
-	// prefer more substrings longer than 1
-	options = []string{"012", "0102", "0123"};
+	// prefer longer substrings 
+	options = []string{"01203", "0102", "0123"};
 	searchQuery = "123";
 	expectedResults = []string{
 		"0" + colored("123"),
-		"0" + colored("12"),
+		"0" + colored("12") + "0" + colored("3"),
 		"0" + colored("1") + "0" + colored("2"),
 	};
 	assertResultsEqualOptions();
