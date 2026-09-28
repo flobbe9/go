@@ -38,7 +38,7 @@ func SearchAndHighlightOptions(options []string, searchQuery string) []string {
 	})
 
 	// sort by points desc
-	slices.SortFunc(rankedHighlightedOptions, func(a, b models.RankedOption) int {
+	rankedHighlightedOptions = slices.SortedStableFunc(models.RankedOptionIterator(rankedHighlightedOptions), func(a, b models.RankedOption) int {
 		return b.Points - a.Points;
 	});
 
