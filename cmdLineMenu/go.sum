@@ -6,10 +6,6 @@ github.com/clipperhouse/uax29/v2 v2.7.0 h1:+gs4oBZ2gPfVrKPthwbMzWZDaAFPGYK72F0NJ
 github.com/clipperhouse/uax29/v2 v2.7.0/go.mod h1:EFJ2TJMRUaplDxHKj1qAEhCtQPW2tJSwu5BF98AuoVM=
 github.com/eiannone/keyboard v0.0.0-20220611211555-0d226195f203 h1:XBBHcIb256gUJtLmY22n99HaZTz+r2Z51xUPi01m3wg=
 github.com/eiannone/keyboard v0.0.0-20220611211555-0d226195f203/go.mod h1:E1jcSv8FaEny+OP/5k9UxZVw9YFWGj7eI4KR/iOBqCg=
-github.com/flobbe9/go/utils v0.0.0-20260911130436-7b2cc57ece4b h1:2NrLqRjn9TrmNQqbES1PbMNdlxW3D2Uy8+8B2seT08c=
-github.com/flobbe9/go/utils v0.0.0-20260911130436-7b2cc57ece4b/go.mod h1:CjR5NOakTYnaT+iNbkXJOcGNQc5Vqi/Xo05MpSBynDo=
-github.com/flobbe9/go/utils v0.0.0-20260925095000-1948527c9de5 h1:twRsf4Q7TuSpNvJk8tQCNuXdMvjG+Xm3rLypL/pWvIg=
-github.com/flobbe9/go/utils v0.0.0-20260925095000-1948527c9de5/go.mod h1:VZWctFS9WYLkR+3sPSB8PVbmnyWe4JAtJ9ykKUXVLXQ=
 github.com/flobbe9/go/utils v0.1.0 h1:F0tEV3aVAv8n0atYR96IyMGLyYEobypYh7CEPz0/qOg=
 github.com/flobbe9/go/utils v0.1.0/go.mod h1:VZWctFS9WYLkR+3sPSB8PVbmnyWe4JAtJ9ykKUXVLXQ=
 github.com/lucasb-eyer/go-colorful v1.4.0 h1:UtrWVfLdarDgc44HcS7pYloGHJUjHV/4FwW4TvVgFr4=
