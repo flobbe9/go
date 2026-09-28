@@ -36,6 +36,10 @@ func SearchAndHighlightOptions(options []string, searchQuery string) []string {
 	rankedHighlightedOptions = sliceUtils.Filter(rankedHighlightedOptions, func(el models.RankedOption, index int) bool {
 		return el.Points > 0;
 	})
+	// case: no matches
+	if len(rankedHighlightedOptions) == 0 {
+		return []string{};
+	}
 
 	// sort by points desc
 	rankedHighlightedOptions = slices.SortedStableFunc(models.RankedOptionIterator(rankedHighlightedOptions), func(a, b models.RankedOption) int {
