@@ -38,9 +38,9 @@ const NO_SEARCH_RESULTS_MSG_START = "No results for search";
 // with Enter.
 // 
 // [return] the selected option from [options].
-func Prompt(_question string, _initialOptions []string, _config models.Config) (string, error) {
+func Prompt(_question string, _initialOptions []string, _config models.Config) (string, int, error) {
 	if (len(_initialOptions) <= 0) {
-		return "", fmt.Errorf("Specify at least one option");
+		return "", 1, fmt.Errorf("Specify at least one option");
 	}
 
 	// init global vars
@@ -68,14 +68,19 @@ func Prompt(_question string, _initialOptions []string, _config models.Config) (
 	}
 
 	// await user input
-	err := handleUserInput();
+	exitcode, err := handleUserInput();
 	if err != nil {
-		return "", err;
+		return "", 1, err;
+	}
+	// case: exit without selection
+	// TODO does this work?
+	if exitcode == 130 {
+		return "", exitcode, nil;
 	}
 	
 	answer, err := getCurrentlyFocusedOption();
 	if err != nil {
-		return "", err;
+		return "", 1, err;
 	}
 
 	if (config.IsDisplayAnswer) {
@@ -86,13 +91,13 @@ func Prompt(_question string, _initialOptions []string, _config models.Config) (
 		clearMenu();
 	}
 
-	return answer, nil;
+	return answer, exitcode, nil;
 }
 
 // Blocks until user has pressed Enter key. Increment / Decrement [state.FocusedOptionIndex] depending on arrow-down/-up keys.
-func handleUserInput() error {
+func handleUserInput() (int, error) {
 	for {
-		err := scanner.ScanlnRaw(func(rawStdin models.RawStdin, line string, cursorIndex int) {
+		exitCode, err := scanner.ScanlnRaw(func(rawStdin models.RawStdin, line string, cursorIndex int) bool {
 			if config.IsOptionSearchEnabled {
 				state.SearchQuery = line;
 				state.SearchQueryCursorIndex = cursorIndex;
@@ -132,12 +137,21 @@ func handleUserInput() error {
 
 			case ansiKey.Delete:
 				handleStdinChange();
+
+			case ansiKey.ArrowRight:
+				return true;
 			}
+
+			return false;
 		})
 
-		// don't exit if nothing focused
-		if !areSearchResultsEmpty() || err != nil {
-			return err;
+		if err != nil || exitCode > 0 {
+			return exitCode, err;
+			
+		}
+		// exit only if there's a focused search result
+		if !areSearchResultsEmpty() {
+			return 0, err;
 		}
 	}
 }

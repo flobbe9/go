@@ -20,12 +20,13 @@ import (
 //
 // [switchOnRawMode] pass [false] if the terminal is already in raw mode, e.g. when using this function inside a loop.
 //
-// [return] the read bytes or an error if the terminal could not be switched into raw mode, or Ctrl + C was pressed
-func ScanRaw(switchOnRawMode bool) ([]byte, error) {
+// [return] the read bytes or an error if the terminal could not be switched into raw mode. The int is the exit code
+// which will be 1 for any unexpected errors, 130 if Ctrl + C was pressed, 0 otherwise
+func ScanRaw(switchOnRawMode bool) ([]byte, int, error) {
 	if switchOnRawMode {
 		oldState, err := term.MakeRaw(int(os.Stdin.Fd()));
 		if err != nil {
-			return nil, err;
+			return nil, 1, err;
 		}
 		defer term.Restore(int(os.Stdin.Fd()), oldState);
 	}
@@ -35,12 +36,13 @@ func ScanRaw(switchOnRawMode bool) ([]byte, error) {
 	
 	b, err := reader.ReadByte();
 	if err != nil {
-		return nil, err;
+		return nil, 1, err;
 	}
 	
 	// raw mode requires manual exit handling 
 	if b == key.CtrlC {
-		return nil, fmt.Errorf("User interrupt");
+		// TODO constant
+		return nil, 130, nil;
 	} 
 
 	rawStdin.Buff = append(rawStdin.Buff, b);
@@ -57,18 +59,18 @@ func ScanRaw(switchOnRawMode bool) ([]byte, error) {
 	if rawStdin.LooksLikeAnsi() {
 		b2, err := reader.ReadByte();
 		if err != nil {
-			return nil, err;
+			return nil, 1, err;
 		}
 		rawStdin.Buff = append(rawStdin.Buff, b2);
 		
 		b3, err := reader.ReadByte();
 		if err != nil {
-			return nil, err;
+			return nil, 1, err;
 		}
 		rawStdin.Buff = append(rawStdin.Buff, b3);
 	}
 
-	return rawStdin.Buff, nil;
+	return rawStdin.Buff, 0, nil;
 }
 
 // Uses [ScanRaw] for repeatedly reading bytes from [os.Stdin], stopping when Enter key is pressed. This scan function
@@ -83,11 +85,21 @@ func ScanRaw(switchOnRawMode bool) ([]byte, error) {
 //
 // Arg [cursorIndex] 0-based index of the current terminal cursor position
 //
-// [return] the read bytes or an error if the terminal could not be switched into raw mode, or Ctrl + C was pressed
-func ScanlnRaw(callback func (rawStdin models.RawStdin, line string, cursorIndex int)) error {
+// Returns [true] if the scanner loop should be interrupted, [false] otherwise
+//
+// [return]
+// 
+// - exit code of [callback]
+// 
+// - 130 if [callback] returned [true] or Ctrl + C was pressed 
+// 
+// - 0 if no error 
+// 
+// - exitCode > 0 and an error, e.g. if the terminal could not be switched into raw mode
+func ScanlnRaw(callback func (rawStdin models.RawStdin, line string, cursorIndex int) bool) (int, error) {
 	oldState, err := term.MakeRaw(int(os.Stdin.Fd()));
     if err != nil {
-		return err;
+		return 1, err;
     }
     defer term.Restore(int(os.Stdin.Fd()), oldState);
 
@@ -105,11 +117,13 @@ func ScanlnRaw(callback func (rawStdin models.RawStdin, line string, cursorIndex
 		}
 	}
 
+	var exitCode int;
 	for {
-		buff, err := ScanRaw(false);
-		if err != nil {
-			return err;
+		buff, scannerExitCode, err := ScanRaw(false);
+		if err != nil || scannerExitCode > 0 {
+			return scannerExitCode, err;
 		}
+
 		rawStdin := models.RawStdin{Buff: buff};
 
 		// UTF-8
@@ -163,9 +177,13 @@ func ScanlnRaw(callback func (rawStdin models.RawStdin, line string, cursorIndex
 		}
 
 		if callback != nil {
-			callback(rawStdin, string(line), cursorIndex);
+			doExit := callback(rawStdin, string(line), cursorIndex);
+			if doExit {
+				exitCode = 130;
+				break;
+			}
 		}
 	}
 
-	return nil;
+	return exitCode, nil;
 }
