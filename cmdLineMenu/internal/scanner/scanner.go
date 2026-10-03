@@ -11,6 +11,7 @@ import (
 	"github.com/flobbe9/go/cmdLineMenu/constants/ansiKey"
 	"github.com/flobbe9/go/cmdLineMenu/constants/key"
 	"github.com/flobbe9/go/cmdLineMenu/models"
+	"github.com/flobbe9/go/utils/errorUtils"
 	"golang.org/x/term"
 )
 
@@ -20,12 +21,12 @@ import (
 //
 // [switchOnRawMode] pass [false] if the terminal is already in raw mode, e.g. when using this function inside a loop.
 //
-// [return] the read bytes or an error if the terminal could not be switched into raw mode, or Ctrl + C was pressed
-func ScanRaw(switchOnRawMode bool) ([]byte, error) {
+// [return] the read bytes or an error and an [errorUtils.ExitCode] > 0 if the terminal could not be switched into raw mode.
+func ScanRaw(switchOnRawMode bool) ([]byte, errorUtils.ErrorExitCode) {
 	if switchOnRawMode {
 		oldState, err := term.MakeRaw(int(os.Stdin.Fd()));
 		if err != nil {
-			return nil, err;
+			return nil, *errorUtils.NewErrorExitCode(errorUtils.EXIT_ERR, err.Error());
 		}
 		defer term.Restore(int(os.Stdin.Fd()), oldState);
 	}
@@ -35,12 +36,12 @@ func ScanRaw(switchOnRawMode bool) ([]byte, error) {
 	
 	b, err := reader.ReadByte();
 	if err != nil {
-		return nil, err;
+		return nil, *errorUtils.NewErrorExitCode(errorUtils.EXIT_ERR, err.Error());
 	}
 	
 	// raw mode requires manual exit handling 
 	if b == key.CtrlC {
-		return nil, fmt.Errorf("User interrupt");
+		return nil, *errorUtils.NewErrorExitCode(errorUtils.EXIT_USER_INTERRUPT, "");
 	} 
 
 	rawStdin.Buff = append(rawStdin.Buff, b);
@@ -57,18 +58,18 @@ func ScanRaw(switchOnRawMode bool) ([]byte, error) {
 	if rawStdin.LooksLikeAnsi() {
 		b2, err := reader.ReadByte();
 		if err != nil {
-			return nil, err;
+			return nil, *errorUtils.NewErrorExitCode(errorUtils.EXIT_ERR, err.Error());
 		}
 		rawStdin.Buff = append(rawStdin.Buff, b2);
 		
 		b3, err := reader.ReadByte();
 		if err != nil {
-			return nil, err;
+			return nil, *errorUtils.NewErrorExitCode(errorUtils.EXIT_ERR, err.Error());
 		}
 		rawStdin.Buff = append(rawStdin.Buff, b3);
 	}
 
-	return rawStdin.Buff, nil;
+	return rawStdin.Buff, *errorUtils.NewErrorExitCode(errorUtils.EXIT_OK, "");
 }
 
 // Uses [ScanRaw] for repeatedly reading bytes from [os.Stdin], stopping when Enter key is pressed. This scan function
@@ -83,11 +84,21 @@ func ScanRaw(switchOnRawMode bool) ([]byte, error) {
 //
 // Arg [cursorIndex] 0-based index of the current terminal cursor position
 //
-// [return] the read bytes or an error if the terminal could not be switched into raw mode, or Ctrl + C was pressed
-func ScanlnRaw(callback func (rawStdin models.RawStdin, line string, cursorIndex int)) error {
+// Returns [true] if the scanner loop should be interrupted, [false] otherwise
+//
+// [return]
+// 
+// - [errorUtils.ExitCode] of [callback]
+// 
+// - or [errorUtils.EXIT_USER_INTERRUPT] if [callback] returned [true] or Ctrl + C was pressed 
+// 
+// - or [errorUtils.EXIT_OK] if no error 
+// 
+// - or exitCode > 0 and an error, e.g. if the terminal could not be switched into raw mode
+func ScanlnRaw(callback func (rawStdin models.RawStdin, line string, cursorIndex int) bool) (errorUtils.ErrorExitCode) {
 	oldState, err := term.MakeRaw(int(os.Stdin.Fd()));
     if err != nil {
-		return err;
+		return *errorUtils.NewErrorExitCode(errorUtils.EXIT_ERR, err.Error());
     }
     defer term.Restore(int(os.Stdin.Fd()), oldState);
 
@@ -106,10 +117,11 @@ func ScanlnRaw(callback func (rawStdin models.RawStdin, line string, cursorIndex
 	}
 
 	for {
-		buff, err := ScanRaw(false);
-		if err != nil {
-			return err;
+		buff, errEx := ScanRaw(false);
+		if errEx.IsError()  {
+			return errEx;
 		}
+
 		rawStdin := models.RawStdin{Buff: buff};
 
 		// UTF-8
@@ -127,7 +139,7 @@ func ScanlnRaw(callback func (rawStdin models.RawStdin, line string, cursorIndex
 			}
 			break;
 
-		} else if rawStdin.Buff[0] == key.CtrlBackspace {
+		} else if rawStdin.Buff[0] == key.Ctrl_Backspace || rawStdin.Buff[0] == key.Ctrl_W {
 			line = []rune{};
 			fmt.Print(ansi.DeleteLine(1));
 			cursorIndex = 0;
@@ -163,9 +175,12 @@ func ScanlnRaw(callback func (rawStdin models.RawStdin, line string, cursorIndex
 		}
 
 		if callback != nil {
-			callback(rawStdin, string(line), cursorIndex);
+			doExit := callback(rawStdin, string(line), cursorIndex);
+			if doExit {
+				return *errorUtils.NewErrorExitCode(errorUtils.EXIT_USER_INTERRUPT, "");
+			}
 		}
 	}
 
-	return nil;
+	return *errorUtils.NewErrorExitCode(errorUtils.EXIT_OK, "");
 }
