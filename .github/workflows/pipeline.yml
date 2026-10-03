@@ -1,0 +1,57 @@
+name: pipeline
+description: Test a specified go package and tag it with a specified version.
+
+on:
+    workflow_dispatch:
+        inputs:
+            package:
+                description: Package
+                required: true
+                type: choice
+                options:
+                    - utils
+                    - cmdLineMenu
+            version:
+                description: Version for the tag
+                required: true
+                type: string
+            dry_run:
+                description: Set to false to skip tagging
+                type: boolean
+                default: false
+
+jobs:
+    tests:
+        # NOTE: ${{}} syntax does not work here
+        if: (github.head_ref || github.ref_name) == 'main'
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v7
+            - name: Setup Go
+              uses: actions/setup-go@v7
+              with:
+                go-version: '${{ vars.GO_VERSION }}'
+            - name: Install dependencies
+              run: go get .
+              working-directory: ./${{ inputs.package }}
+            - name: Run tests recursively
+              run: go test ./...
+              working-directory: ./${{ inputs.package }}
+
+    tag:
+        if: ${{ inputs.dry_run == false }}
+        runs-on: ubuntu-latest
+        permissions:
+            # needed for pushing tags
+            contents: write
+        needs: tests
+        env:
+            TAG: ${{ inputs.package }}/${{ inputs.version }}
+        steps:
+            - uses: actions/checkout@v7
+            - name: Push tag '${{ env.TAG }}'
+              run: |
+                git config user.name "github-actions[bot]"
+                git config user.email "github-actions[bot]@users.noreply.github.com"
+                git tag ${{ env.TAG }}
+                git push origin ${{ env.TAG }}
