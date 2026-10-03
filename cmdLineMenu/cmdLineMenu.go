@@ -134,8 +134,8 @@ func handleUserInput() errorUtils.ErrorExitCode {
 			case ansiKey.Delete:
 				handleStdinChange();
 
-			// TODO use different key
-			case ansiKey.ArrowRight:
+			// exit menu
+			case ansiKey.Ctrl_ArrowRight:
 				return true;
 			}
 
