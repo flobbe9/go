@@ -13,6 +13,7 @@ import (
 	"github.com/flobbe9/go/cmdLineMenu/internal/search"
 	"github.com/flobbe9/go/cmdLineMenu/internal/utils/ansiUtils"
 	"github.com/flobbe9/go/cmdLineMenu/models"
+	"github.com/flobbe9/go/utils/errorUtils"
 	"github.com/flobbe9/go/utils/sliceUtils"
 	"github.com/flobbe9/go/utils/stringUtils"
 
@@ -38,9 +39,9 @@ const NO_SEARCH_RESULTS_MSG_START = "No results for search";
 // with Enter.
 // 
 // [return] the selected option from [options].
-func Prompt(_question string, _initialOptions []string, _config models.Config) (string, int, error) {
+func Prompt(_question string, _initialOptions []string, _config models.Config) (string, errorUtils.ErrorExitCode) {
 	if (len(_initialOptions) <= 0) {
-		return "", 1, fmt.Errorf("Specify at least one option");
+		return "", *errorUtils.NewErrorExitCode(errorUtils.EXIT_ERR, "Specify at least one option");
 	}
 
 	// init global vars
@@ -68,19 +69,14 @@ func Prompt(_question string, _initialOptions []string, _config models.Config) (
 	}
 
 	// await user input
-	exitcode, err := handleUserInput();
-	if err != nil {
-		return "", 1, err;
-	}
-	// case: exit without selection
-	// TODO does this work?
-	if exitcode == 130 {
-		return "", exitcode, nil;
+	errEx := handleUserInput();
+	if errEx.IsError() {
+		return "", errEx;
 	}
 	
 	answer, err := getCurrentlyFocusedOption();
 	if err != nil {
-		return "", 1, err;
+		return "", *errorUtils.NewErrorExitCode(errorUtils.EXIT_ERR, err.Error());
 	}
 
 	if (config.IsDisplayAnswer) {
@@ -91,13 +87,13 @@ func Prompt(_question string, _initialOptions []string, _config models.Config) (
 		clearMenu();
 	}
 
-	return answer, exitcode, nil;
+	return answer, errEx;
 }
 
 // Blocks until user has pressed Enter key. Increment / Decrement [state.FocusedOptionIndex] depending on arrow-down/-up keys.
-func handleUserInput() (int, error) {
+func handleUserInput() errorUtils.ErrorExitCode {
 	for {
-		exitCode, err := scanner.ScanlnRaw(func(rawStdin models.RawStdin, line string, cursorIndex int) bool {
+		errEx := scanner.ScanlnRaw(func(rawStdin models.RawStdin, line string, cursorIndex int) bool {
 			if config.IsOptionSearchEnabled {
 				state.SearchQuery = line;
 				state.SearchQueryCursorIndex = cursorIndex;
@@ -113,7 +109,7 @@ func handleUserInput() (int, error) {
 			}
 
 			switch rawStdin.GetSignificantAsciiKey() {
-			case key.Backspace, key.CtrlBackspace:
+			case key.Backspace, key.Ctrl_Backspace, key.Ctrl_W:
 				handleStdinChange();
 			}
 
@@ -138,6 +134,7 @@ func handleUserInput() (int, error) {
 			case ansiKey.Delete:
 				handleStdinChange();
 
+			// TODO use different key
 			case ansiKey.ArrowRight:
 				return true;
 			}
@@ -145,13 +142,13 @@ func handleUserInput() (int, error) {
 			return false;
 		})
 
-		if err != nil || exitCode > 0 {
-			return exitCode, err;
-			
+		if errEx.IsError() {
+			return errEx;
 		}
+			
 		// exit only if there's a focused search result
 		if !areSearchResultsEmpty() {
-			return 0, err;
+			return *errorUtils.NewErrorExitCode(errorUtils.EXIT_OK, "");
 		}
 	}
 }
