@@ -1,3 +1,31 @@
+// Provides a multiple choice terminal view letting the user select an option:
+//
+//  options := []string{"apple", "banana", "ananas"};
+//  selection, err := cmdLineMenu.Prompt(
+//     "Select a fruit",
+//     options,
+//     models.Config{IsClearMenuOnSubmit: true, IsShowSubmitHint: false, IsDisplayAnswer: true, IsOptionSearchEnabled: true},
+//  )
+//  // handle err
+//
+// Or with multiple options: 
+//
+//  options := []string{"apple", "banana", "ananas"};
+//  var selections []string;
+// 
+//  fmt.Println("Select a fruit");
+//  for {
+//      selection, err := cmdLineMenu.Prompt(
+//          "", // leave empty for proper menu display
+//         options,
+//         models.Config{IsClearMenuOnSubmit: true, IsShowSubmitHint: false, IsDisplayAnswer: true, IsOptionSearchEnabled: true},
+//     )
+//     // handle err
+// 
+//     selections = append(selections, selection);
+//     deleteIndex := slices.Index(options, selection);
+//     options = slices.Delete(options, deleteIndex, deleteIndex + 1);
+//  }
 package cmdLineMenu
 
 import (
@@ -13,6 +41,7 @@ import (
 	"github.com/flobbe9/go/cmdLineMenu/internal/search"
 	"github.com/flobbe9/go/cmdLineMenu/internal/utils/ansiUtils"
 	"github.com/flobbe9/go/cmdLineMenu/models"
+	"github.com/flobbe9/go/utils/errorUtils"
 	"github.com/flobbe9/go/utils/sliceUtils"
 	"github.com/flobbe9/go/utils/stringUtils"
 
@@ -38,9 +67,9 @@ const NO_SEARCH_RESULTS_MSG_START = "No results for search";
 // with Enter.
 // 
 // [return] the selected option from [options].
-func Prompt(_question string, _initialOptions []string, _config models.Config) (string, error) {
+func Prompt(_question string, _initialOptions []string, _config models.Config) (string, errorUtils.ErrorExitCode) {
 	if (len(_initialOptions) <= 0) {
-		return "", fmt.Errorf("Specify at least one option");
+		return "", *errorUtils.NewErrorExitCode(errorUtils.EXIT_ERR, "Specify at least one option");
 	}
 
 	// init global vars
@@ -68,14 +97,14 @@ func Prompt(_question string, _initialOptions []string, _config models.Config) (
 	}
 
 	// await user input
-	err := handleUserInput();
-	if err != nil {
-		return "", err;
+	errEx := handleUserInput();
+	if errEx.IsError() {
+		return "", errEx;
 	}
 	
 	answer, err := getCurrentlyFocusedOption();
 	if err != nil {
-		return "", err;
+		return "", *errorUtils.NewErrorExitCode(errorUtils.EXIT_ERR, err.Error());
 	}
 
 	if (config.IsDisplayAnswer) {
@@ -86,13 +115,13 @@ func Prompt(_question string, _initialOptions []string, _config models.Config) (
 		clearMenu();
 	}
 
-	return answer, nil;
+	return answer, errEx;
 }
 
 // Blocks until user has pressed Enter key. Increment / Decrement [state.FocusedOptionIndex] depending on arrow-down/-up keys.
-func handleUserInput() error {
+func handleUserInput() errorUtils.ErrorExitCode {
 	for {
-		err := scanner.ScanlnRaw(func(rawStdin models.RawStdin, line string, cursorIndex int) {
+		errEx := scanner.ScanlnRaw(func(rawStdin models.RawStdin, line string, cursorIndex int) bool {
 			if config.IsOptionSearchEnabled {
 				state.SearchQuery = line;
 				state.SearchQueryCursorIndex = cursorIndex;
@@ -108,7 +137,7 @@ func handleUserInput() error {
 			}
 
 			switch rawStdin.GetSignificantAsciiKey() {
-			case key.Backspace, key.CtrlBackspace:
+			case key.Backspace, key.Ctrl_Backspace, key.Ctrl_W:
 				handleStdinChange();
 			}
 
@@ -132,12 +161,22 @@ func handleUserInput() error {
 
 			case ansiKey.Delete:
 				handleStdinChange();
+
+			// exit menu
+			case ansiKey.Ctrl_ArrowRight:
+				return true;
 			}
+
+			return false;
 		})
 
-		// don't exit if nothing focused
-		if !areSearchResultsEmpty() || err != nil {
-			return err;
+		if errEx.IsError() {
+			return errEx;
+		}
+			
+		// exit only if there's a focused search result
+		if !areSearchResultsEmpty() {
+			return *errorUtils.NewErrorExitCode(errorUtils.EXIT_OK, "");
 		}
 	}
 }

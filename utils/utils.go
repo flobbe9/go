@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/eiannone/keyboard"
+	"github.com/flobbe9/go/utils/errorUtils"
 )
 
 // Log [err] and exit if [err] is not [nil]. Do nothing otherwise
@@ -31,6 +32,19 @@ func ErrorLogPromptExit(err error) {
 	os.Exit(1);
 }
 
+// Log [errEx] and exit if [errEx] is not [nil]. Do nothing otherwise
+func ErrorExitCodeLogExit(errEx errorUtils.ErrorExitCode) {
+	if errEx.IsError() {
+		ErrorLogExit(errEx)
+	}
+}
+
+// Log [errEx] and exit if [errEx] is not [nil]. Do nothing otherwise
+func ErrorExitCodeLogPromptExit(errEx errorUtils.ErrorExitCode) {
+	if errEx.IsError() {
+		ErrorLogPromptExit(errEx);
+	}
+}
 
 // Execute [callback] repeatedly every [interval] until the ticker is closed or the program ends. Does not block.
 func GoInterval(interval time.Duration, callback func(ticker *time.Ticker, time time.Time)) *time.Ticker {

@@ -53,7 +53,7 @@ func (this *RawStdin) IsControlKeyAscii() bool {
 // Indicates that the first bytes in [this.Buff] match an opening ansi sequence. Does not guarantee
 // that [this.Buff] is actually ansi!
 //
-// [return] [true] if [this.Buff] starts with {27} or {27, 91 | 79}
+// [return] [true] if [this.Buff] starts with {27} or {27, 91 | 79 | 27}
 func (this *RawStdin) LooksLikeAnsi() bool {
 	if len(this.Buff) == 0 {
 		return false
@@ -61,7 +61,7 @@ func (this *RawStdin) LooksLikeAnsi() bool {
 
 	if this.Buff[0] == byte(constants.ANSI_ESCAPE_SEQ) {
 		// case: has more bytes but the wrong ones
-		if len(this.Buff) >= 2 && this.Buff[1] != 91 && this.Buff[1] != 79 {
+		if len(this.Buff) >= 2 && this.Buff[1] != 91 && this.Buff[1] != 79 && this.Buff[1] != 27 {
 			return false;
 		}
 		return true;
