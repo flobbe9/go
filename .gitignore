@@ -10,7 +10,8 @@
 ## for testing stuff
 /test
 /cmdLineMenu/test
-/jdkvm/test
+/jdkvm/cmd/test
+/tmp
 
 # Code coverage profiles and other test artifacts
 *.out

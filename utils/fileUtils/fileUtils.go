@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io/fs"
 	"os"
+	"time"
 )
 
 func DirExists(path string) (bool, error) {
@@ -17,4 +18,11 @@ func DirExists(path string) (bool, error) {
 	}
 
 	return false, err
+}
+
+
+// Generates a filename-safe timestamp for [time.Now()].
+// TODO tests
+func Timestamp() string {
+	return time.Now().Local().Format("2006-01-02T15-04-05.000");
 }

@@ -3,7 +3,6 @@ package utils
 import (
 	"context"
 	"fmt"
-	"log"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -13,10 +12,18 @@ import (
 	"github.com/flobbe9/go/utils/errorUtils"
 )
 
+// Log [err] if [err] is not [nil]. Do nothing otherwise
+func ErrorLog(err error) {
+	if err != nil {
+		slog.Error(err.Error());
+	}
+}
+
 // Log [err] and exit if [err] is not [nil]. Do nothing otherwise
 func ErrorLogExit(err error) {
 	if err != nil {
-		log.Fatal(err)
+		slog.Error(err.Error());
+		os.Exit(1);
 	}
 }
 

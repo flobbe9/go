@@ -1,4 +1,4 @@
-package winutils;
+package winutils
 
 import (
 	"os"
@@ -10,8 +10,10 @@ import (
 
 // Restarts this go executable with admin privileges. This will prompt the user to grant those.
 //
+// [windowMode] see [windows] package "windows.SW_...". Determines how the terminal for the rerun is opened
+//
 // Returns an error if [windows.ShellExecute] threw one
-func RerunSelfAsAdmin() error {
+func RerunSelfAsAdmin(windowMode int32) error {
 	verbPtr, _ := syscall.UTF16PtrFromString("runas");
 
 	exe, _ := os.Executable(); // the executable of this go program
@@ -29,7 +31,7 @@ func RerunSelfAsAdmin() error {
 		exePtr,
 		argsPtr,
 		cwdPtr,
-		int32(windows.SW_NORMAL),
+		windowMode,
 	);
 
 	return err;
