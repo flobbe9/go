@@ -31,6 +31,9 @@ jobs:
               uses: actions/setup-go@v7
               with:
                 go-version: '${{ vars.GO_VERSION }}'
+            - name: Clean dependency cache
+              run: go clean -modcache
+              working-directory: ./${{ inputs.package }}
             - name: Install dependencies
               run: go get .
               working-directory: ./${{ inputs.package }}
